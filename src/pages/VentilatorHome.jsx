@@ -60,12 +60,13 @@ export default function VentilatorHome() {
   }
 
   // اگر بیمار تشخیص داده شد، صفحه مربوطه را نمایش بده
+  
   if (patientType === 'infant') {
     return <InfantVentilator 
       weight={weight} 
       age={age} 
       ageUnit={ageUnit} 
-      disease={disease} // ارسال بیماری به کامپوننت
+      disease={disease} 
       onBack={handleReset} 
     />
   }
@@ -75,7 +76,7 @@ export default function VentilatorHome() {
       weight={weight} 
       age={age} 
       ageUnit={ageUnit} 
-      disease={disease} // ارسال بیماری به کامپوننت
+      disease={disease} 
       onBack={handleReset} 
     />
   }

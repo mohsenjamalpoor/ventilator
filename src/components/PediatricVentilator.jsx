@@ -9,7 +9,7 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
     peep: 5,
     ieRatio: '1:2',
     flowRate: 60,
-    mode: 'VCV' // مد پیش فرض
+    mode: 'VCV'
   }
 
   // state برای تنظیمات فعال
@@ -22,8 +22,10 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
   })
   const [abgInterpretation, setAbgInterpretation] = useState('')
   const [selectedMode, setSelectedMode] = useState('VCV')
+  const [abgErrors, setAbgErrors] = useState({})
+  const [showValidation, setShowValidation] = useState(false)
 
-  // مدهای مختلف ونتیلاتور
+  // مدهای مختلف ونتیلاتور برای کودکان
   const ventilatorModes = {
     VCV: {
       name: 'VCV - حجم کنترل',
@@ -41,7 +43,7 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
       name: 'PCV - فشار کنترل',
       description: 'فشار دمی ثابت، حجم متغیر',
       settings: {
-        pip: 20,
+        pip: 25,
         respiratoryRate: 12,
         fio2: 40,
         peep: 5,
@@ -78,7 +80,250 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
         fio2: 40,
         peep: 5
       }
+    },
+    PRVC: {
+      name: 'PRVC - حجم جاری تنظیم‌شده با فشار',
+      description: 'ترکیب مزایای VCV و PCV',
+      settings: {
+        tidalVolume: (weight * 6).toFixed(1),
+        respiratoryRate: 12,
+        fio2: 40,
+        peep: 5,
+        ieRatio: '1:2'
+      }
+    },
+    APRV: {
+      name: 'APRV - تهویه با آزادسازی فشار راه هوایی',
+      description: 'مد پیشرفته برای بیماران با compliance پایین',
+      settings: {
+        phigh: 28,
+        plow: 8,
+        timeHigh: 4.5,
+        timeLow: 0.8,
+        fio2: 40
+      }
     }
+  }
+
+  // اعتبارسنجی مقادیر ABG برای کودکان
+  const validateABG = () => {
+    const { pH, pCO2, pO2, HCO3 } = abgValues
+    const errors = {}
+    let isValid = true
+
+    // اعتبارسنجی pH
+    if (!pH) {
+      errors.pH = 'مقدار pH الزامی است'
+      isValid = false
+    } else {
+      const pHNum = parseFloat(pH)
+      if (pHNum < 6.8 || pHNum > 7.8) {
+        errors.pH = 'مقدار pH باید بین 6.8 تا 7.8 باشد'
+        isValid = false
+      } else if (pHNum < 7.35 || pHNum > 7.45) {
+        errors.pH = 'مقدار pH خارج از محدوده نرمال است'
+      }
+    }
+
+    // اعتبارسنجی pCO2
+    if (!pCO2) {
+      errors.pCO2 = 'مقدار pCO2 الزامی است'
+      isValid = false
+    } else {
+      const pCO2Num = parseFloat(pCO2)
+      if (pCO2Num < 20 || pCO2Num > 100) {
+        errors.pCO2 = 'مقدار pCO2 باید بین 20 تا 100 mmHg باشد'
+        isValid = false
+      } else if (pCO2Num < 35 || pCO2Num > 45) {
+        errors.pCO2 = 'مقدار pCO2 خارج از محدوده نرمال است'
+      }
+    }
+
+    // اعتبارسنجی pO2
+    if (!pO2) {
+      errors.pO2 = 'مقدار pO2 الزامی است'
+      isValid = false
+    } else {
+      const pO2Num = parseFloat(pO2)
+      if (pO2Num < 30 || pO2Num > 300) {
+        errors.pO2 = 'مقدار pO2 باید بین 30 تا 300 mmHg باشد'
+        isValid = false
+      } else if (pO2Num < 80) {
+        errors.pO2 = 'مقدار pO2 پایین است (هیپوکسمی)'
+      }
+    }
+
+    // اعتبارسنجی HCO3
+    if (!HCO3) {
+      errors.HCO3 = 'مقدار HCO3 الزامی است'
+      isValid = false
+    } else {
+      const HCO3Num = parseFloat(HCO3)
+      if (HCO3Num < 10 || HCO3Num > 40) {
+        errors.HCO3 = 'مقدار HCO3 باید بین 10 تا 40 mEq/L باشد'
+        isValid = false
+      } else if (HCO3Num < 22 || HCO3Num > 26) {
+        errors.HCO3 = 'مقدار HCO3 خارج از محدوده نرمال است'
+      }
+    }
+
+    setAbgErrors(errors)
+    setShowValidation(true)
+    return isValid
+  }
+
+  // تفسیر پیشرفته ABG برای کودکان
+  const interpretABG = () => {
+    if (!validateABG()) {
+      return
+    }
+
+    const { pH, pCO2, pO2, HCO3 } = abgValues
+    const pHNum = parseFloat(pH)
+    const pCO2Num = parseFloat(pCO2)
+    const pO2Num = parseFloat(pO2)
+    const HCO3Num = parseFloat(HCO3)
+
+    let interpretation = ''
+    let detailedInterpretation = ''
+    let compensation = ''
+    let newSettings = { ...currentSettings }
+
+    // تشخیص نوع اختلال اسید-باز
+    if (pHNum < 7.35) {
+      // اسیدوز
+      if (pCO2Num > 45) {
+        interpretation = 'اسیدوز تنفسی'
+        // محاسبه جبران متابولیک مورد انتظار
+        const expectedHCO3 = 24 + ((pCO2Num - 40) / 10) * 2.5
+        if (HCO3Num > expectedHCO3 + 2) {
+          compensation = 'جبران نشده'
+        } else if (HCO3Num >= expectedHCO3 - 2 && HCO3Num <= expectedHCO3 + 2) {
+          compensation = 'جبران حاد'
+        } else {
+          compensation = 'جبران مزمن'
+        }
+        
+        // تنظیمات برای اسیدوز تنفسی
+        newSettings.respiratoryRate = Math.min(20, currentSettings.respiratoryRate + 2)
+        if (selectedMode === 'VCV' || selectedMode === 'SIMV') {
+          newSettings.tidalVolume = (weight * 10).toFixed(1)
+        }
+      } else if (HCO3Num < 22) {
+        interpretation = 'اسیدوز متابولیک'
+        // محاسبه جبران تنفسی مورد انتظار
+        const expectedPCO2 = (1.5 * HCO3Num) + 8
+        if (pCO2Num > expectedPCO2 + 2) {
+          compensation = 'اسیدوز تنفسی همراه'
+        } else if (pCO2Num < expectedPCO2 - 2) {
+          compensation = 'آلکالوز تنفسی همراه'
+        } else {
+          compensation = 'جبران مناسب'
+        }
+      }
+    } else if (pHNum > 7.45) {
+      // آلکالوز
+      if (pCO2Num < 35) {
+        interpretation = 'آلکالوز تنفسی'
+        // محاسبه جبران متابولیک مورد انتظار
+        const expectedHCO3 = 24 - ((40 - pCO2Num) / 10) * 5
+        if (HCO3Num < expectedHCO3 - 2) {
+          compensation = 'جبران نشده'
+        } else if (HCO3Num >= expectedHCO3 - 2 && HCO3Num <= expectedHCO3 + 2) {
+          compensation = 'جبران حاد'
+        } else {
+          compensation = 'جبران مزمن'
+        }
+        
+        // تنظیمات برای آلکالوز تنفسی
+        newSettings.respiratoryRate = Math.max(8, currentSettings.respiratoryRate - 2)
+        if (selectedMode === 'VCV' || selectedMode === 'SIMV') {
+          newSettings.tidalVolume = (weight * 6).toFixed(1)
+        }
+      } else if (HCO3Num > 26) {
+        interpretation = 'آلکالوز متابولیک'
+        // محاسبه جبران تنفسی مورد انتظار
+        const expectedPCO2 = (0.7 * HCO3Num) + 20
+        if (pCO2Num > expectedPCO2 + 2) {
+          compensation = 'اسیدوز تنفسی همراه'
+        } else if (pCO2Num < expectedPCO2 - 2) {
+          compensation = 'آلکالوز تنفسی همراه'
+        } else {
+          compensation = 'جبران مناسب'
+        }
+      }
+    } else {
+      interpretation = 'ABG نرمال'
+      compensation = 'تعادل اسید-باز نرمال'
+    }
+
+    // تشخیص اختلالات مختلط
+    if (pHNum >= 7.35 && pHNum <= 7.45) {
+      if (pCO2Num > 45 && HCO3Num > 26) {
+        interpretation = 'اختلال مختلط - آلکالوز متابولیک جبران شده با اسیدوز تنفسی'
+      } else if (pCO2Num < 35 && HCO3Num < 22) {
+        interpretation = 'اختلال مختلط - اسیدوز متابولیک جبران شده با آلکالوز تنفسی'
+      }
+    }
+
+    // بررسی هیپوکسمی برای کودکان
+    let oxygenationStatus = ''
+    if (pO2Num < 60) {
+      oxygenationStatus = 'هیپوکسمی شدید'
+      newSettings.fio2 = Math.min(80, currentSettings.fio2 + 30)
+      newSettings.peep = Math.min(10, currentSettings.peep + 3)
+    } else if (pO2Num < 80) {
+      oxygenationStatus = 'هیپوکسمی'
+      newSettings.fio2 = Math.min(60, currentSettings.fio2 + 20)
+      newSettings.peep = Math.min(8, currentSettings.peep + 2)
+    } else {
+      oxygenationStatus = 'اکسیژناسیون نرمال'
+    }
+
+    // محاسبه Anion Gap برای اسیدوز متابولیک
+    let anionGapInfo = ''
+    if (interpretation.includes('اسیدوز متابولیک')) {
+      const anionGap = 140 - 104 - HCO3Num
+      if (anionGap > 12) {
+        anionGapInfo = ` (Anion Gap بالا: ${anionGap} - احتمال اسیدوز متابولیک ناشی از اسیدهای ثابت)`
+      } else {
+        anionGapInfo = ` (Anion Gap نرمال: ${anionGap} - احتمال اسیدوز متابولیک ناشی از دفع HCO3)`
+      }
+    }
+
+    detailedInterpretation = `${interpretation}${anionGapInfo}`
+    if (compensation) {
+      detailedInterpretation += ` - ${compensation}`
+    }
+    if (oxygenationStatus && oxygenationStatus !== 'اکسیژناسیون نرمال') {
+      detailedInterpretation += ` - ${oxygenationStatus}`
+    }
+
+    setAbgInterpretation(detailedInterpretation)
+    setCurrentSettings(newSettings)
+  }
+
+  const handleAbgChange = (field, value) => {
+    setAbgValues(prev => ({
+      ...prev,
+      [field]: value
+    }))
+    // پاک کردن خطا هنگام تایپ
+    if (abgErrors[field]) {
+      setAbgErrors(prev => ({
+        ...prev,
+        [field]: ''
+      }))
+    }
+  }
+
+  const resetSettings = () => {
+    setCurrentSettings(initialSettings)
+    setAbgValues({ pH: '', pCO2: '', pO2: '', HCO3: '' })
+    setAbgInterpretation('')
+    setSelectedMode('VCV')
+    setAbgErrors({})
+    setShowValidation(false)
   }
 
   const handleModeChange = (mode) => {
@@ -91,75 +336,7 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
     }))
   }
 
-  const interpretABG = () => {
-    const { pH, pCO2, pO2, HCO3 } = abgValues
-    
-    if (!pH || !pCO2 || !pO2 || !HCO3) {
-      alert('لطفا تمام مقادیر ABG را وارد کنید')
-      return
-    }
-
-    const pHNum = parseFloat(pH)
-    const pCO2Num = parseFloat(pCO2)
-    const pO2Num = parseFloat(pO2)
-    const HCO3Num = parseFloat(HCO3)
-
-    let interpretation = ''
-    let newSettings = { ...currentSettings }
-
-    // تفسیر ABG برای کودکان
-    if (pHNum < 7.35) {
-      if (pCO2Num > 45) {
-        interpretation = 'اسیدوز تنفسی'
-        newSettings.respiratoryRate = 16
-        if (selectedMode === 'VCV' || selectedMode === 'SIMV') {
-          newSettings.tidalVolume = (weight * 10).toFixed(1)
-        }
-      } else if (HCO3Num < 22) {
-        interpretation = 'اسیدوز متابولیک'
-        // تنظیمات برای اسیدوز متابولیک
-      }
-    } else if (pHNum > 7.45) {
-      if (pCO2Num < 35) {
-        interpretation = 'آلکالوز تنفسی'
-        newSettings.respiratoryRate = 10
-        if (selectedMode === 'VCV' || selectedMode === 'SIMV') {
-          newSettings.tidalVolume = (weight * 6).toFixed(1)
-        }
-      } else if (HCO3Num > 26) {
-        interpretation = 'آلکالوز متابولیک'
-        // تنظیمات برای آلکالوز متابولیک
-      }
-    } else {
-      interpretation = 'ABG نرمال'
-    }
-
-    // بررسی هیپوکسمی
-    if (pO2Num < 80) {
-      interpretation += ' + هیپوکسمی'
-      newSettings.fio2 = 50
-      newSettings.peep = 8
-    }
-
-    setAbgInterpretation(interpretation)
-    setCurrentSettings(newSettings)
-  }
-
-  const handleAbgChange = (field, value) => {
-    setAbgValues(prev => ({
-      ...prev,
-      [field]: value
-    }))
-  }
-
-  const resetSettings = () => {
-    setCurrentSettings(initialSettings)
-    setAbgValues({ pH: '', pCO2: '', pO2: '', HCO3: '' })
-    setAbgInterpretation('')
-    setSelectedMode('VCV')
-  }
-
-  // رندر تنظیمات بر اساس مد انتخاب شده
+  // رندر تنظیمات بر اساس مد انتخاب شده برای کودکان
   const renderModeSpecificSettings = () => {
     switch(selectedMode) {
       case 'VCV':
@@ -169,7 +346,14 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
               <div className="text-center">
                 <h3 className="text-blue-300 text-sm mb-1">حجم جاری</h3>
                 <p className="text-2xl font-bold text-white mb-1">{currentSettings.tidalVolume} ml</p>
-                <p className="text-blue-400 text-xs">8 ml/kg</p>
+                <p className="text-blue-400 text-xs">6 ml/kg</p>
+              </div>
+            </div>
+            <div className="bg-green-900 rounded-lg p-4 border-2 border-green-500">
+              <div className="text-center">
+                <h3 className="text-green-300 text-sm mb-1">سرعت جریان</h3>
+                <p className="text-2xl font-bold text-white mb-1">{currentSettings.flowRate} L/min</p>
+                <p className="text-green-400 text-xs">Flow Rate</p>
               </div>
             </div>
           </>
@@ -243,9 +427,80 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
             </div>
           </>
         )
+      case 'PRVC':
+        return (
+          <>
+            <div className="bg-blue-900 rounded-lg p-4 border-2 border-blue-500">
+              <div className="text-center">
+                <h3 className="text-blue-300 text-sm mb-1">حجم جاری</h3>
+                <p className="text-2xl font-bold text-white mb-1">{currentSettings.tidalVolume} ml</p>
+                <p className="text-blue-400 text-xs">8 ml/kg</p>
+              </div>
+            </div>
+            <div className="bg-green-900 rounded-lg p-4 border-2 border-green-500">
+              <div className="text-center">
+                <h3 className="text-green-300 text-sm mb-1">حداکثر فشار</h3>
+                <p className="text-2xl font-bold text-white mb-1">30 cmH₂O</p>
+                <p className="text-green-400 text-xs">Max Pressure</p>
+              </div>
+            </div>
+          </>
+        )
+      case 'APRV':
+        return (
+          <>
+            <div className="bg-blue-900 rounded-lg p-4 border-2 border-blue-500">
+              <div className="text-center">
+                <h3 className="text-blue-300 text-sm mb-1">فشار بالا</h3>
+                <p className="text-2xl font-bold text-white mb-1">{currentSettings.phigh} cmH₂O</p>
+                <p className="text-blue-400 text-xs">P High</p>
+              </div>
+            </div>
+            <div className="bg-green-900 rounded-lg p-4 border-2 border-green-500">
+              <div className="text-center">
+                <h3 className="text-green-300 text-sm mb-1">فشار پایین</h3>
+                <p className="text-2xl font-bold text-white mb-1">{currentSettings.plow} cmH₂O</p>
+                <p className="text-green-400 text-xs">P Low</p>
+              </div>
+            </div>
+            <div className="bg-purple-900 rounded-lg p-4 border-2 border-purple-500">
+              <div className="text-center">
+                <h3 className="text-purple-300 text-sm mb-1">زمان فشار بالا</h3>
+                <p className="text-2xl font-bold text-white mb-1">{currentSettings.timeHigh} s</p>
+                <p className="text-purple-400 text-xs">Time High</p>
+              </div>
+            </div>
+          </>
+        )
       default:
         return null
     }
+  }
+
+  // کامپوننت نمایش محدوده نرمال
+  const NormalRangeIndicator = ({ value, normalMin, normalMax, unit }) => {
+    const numValue = parseFloat(value)
+    if (!value) return null
+
+    let status = ''
+    let color = ''
+
+    if (numValue < normalMin) {
+      status = 'پایین'
+      color = 'text-red-600'
+    } else if (numValue > normalMax) {
+      status = 'بالا'
+      color = 'text-yellow-600'
+    } else {
+      status = 'نرمال'
+      color = 'text-green-600'
+    }
+
+    return (
+      <div className={`text-xs mt-1 ${color}`}>
+        {status} (نرمال: {normalMin}-{normalMax} {unit})
+      </div>
+    )
   }
 
   return (
@@ -362,6 +617,20 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
                     <p>• مناسب برای weaning</p>
                   </>
                 )}
+                {selectedMode === 'PRVC' && (
+                  <>
+                    <p>• ترکیب مزایای VCV و PCV</p>
+                    <p>• حجم جاری ثابت با کمترین فشار</p>
+                    <p>• مناسب برای بیماران با compliance متغیر</p>
+                  </>
+                )}
+                {selectedMode === 'APRV' && (
+                  <>
+                    <p>• مد پیشرفته برای ARDS</p>
+                    <p>• بهبود recruitment آلوئولی</p>
+                    <p>• کاهش فشار میانگین راه هوایی</p>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -372,7 +641,7 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
               {/* مانیتور ونتیلاتور */}
               <div className="bg-gray-900 rounded-2xl shadow-lg p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-white">مانیتور ونتیلاتور</h2>
+                  <h2 className="text-xl font-bold text-white">مانیتور ونتیلاتور - کودکان</h2>
                   <div className="bg-teal-600 text-white px-3 py-1 rounded-full text-sm">
                     {ventilatorModes[selectedMode]?.name}
                   </div>
@@ -430,6 +699,17 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
               <div className="bg-white rounded-2xl shadow-lg p-6">
                 <h2 className="text-xl font-bold text-gray-800 mb-4">تفسیر ABG و تنظیمات پیشنهادی</h2>
                 
+                {/* راهنمای محدوده نرمال */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                  <h3 className="font-bold text-blue-800 mb-2">📊 محدوده‌های نرمال برای کودکان:</h3>
+                  <div className="grid grid-cols-2 gap-2 text-sm text-blue-700">
+                    <div>• pH: 7.35 - 7.45</div>
+                    <div>• pCO₂: 35 - 45 mmHg</div>
+                    <div>• pO₂: 80 - 100 mmHg</div>
+                    <div>• HCO₃: 22 - 26 mEq/L</div>
+                  </div>
+                </div>
+                
                 {/* فرم ورود ABG */}
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div>
@@ -439,42 +719,94 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
                       step="0.01"
                       value={abgValues.pH}
                       onChange={(e) => handleAbgChange('pH', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-left"
+                      className={`w-full px-3 py-2 border rounded-lg text-left ${
+                        abgErrors.pH ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
                       placeholder="7.40"
                     />
+                    {abgErrors.pH && (
+                      <p className="text-red-500 text-xs mt-1">{abgErrors.pH}</p>
+                    )}
+                    {showValidation && (
+                      <NormalRangeIndicator 
+                        value={abgValues.pH} 
+                        normalMin={7.35} 
+                        normalMax={7.45} 
+                        unit="" 
+                      />
+                    )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">pCO₂</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">pCO₂ (mmHg)</label>
                     <input
                       type="number"
                       step="0.1"
                       value={abgValues.pCO2}
                       onChange={(e) => handleAbgChange('pCO2', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-left"
+                      className={`w-full px-3 py-2 border rounded-lg text-left ${
+                        abgErrors.pCO2 ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
                       placeholder="40"
                     />
+                    {abgErrors.pCO2 && (
+                      <p className="text-red-500 text-xs mt-1">{abgErrors.pCO2}</p>
+                    )}
+                    {showValidation && (
+                      <NormalRangeIndicator 
+                        value={abgValues.pCO2} 
+                        normalMin={35} 
+                        normalMax={45} 
+                        unit="mmHg" 
+                      />
+                    )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">pO₂</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">pO₂ (mmHg)</label>
                     <input
                       type="number"
                       step="0.1"
                       value={abgValues.pO2}
                       onChange={(e) => handleAbgChange('pO2', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-left"
+                      className={`w-full px-3 py-2 border rounded-lg text-left ${
+                        abgErrors.pO2 ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
                       placeholder="80"
                     />
+                    {abgErrors.pO2 && (
+                      <p className="text-red-500 text-xs mt-1">{abgErrors.pO2}</p>
+                    )}
+                    {showValidation && (
+                      <NormalRangeIndicator 
+                        value={abgValues.pO2} 
+                        normalMin={80} 
+                        normalMax={100} 
+                        unit="mmHg" 
+                      />
+                    )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">HCO₃</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">HCO₃ (mEq/L)</label>
                     <input
                       type="number"
                       step="0.1"
                       value={abgValues.HCO3}
                       onChange={(e) => handleAbgChange('HCO3', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-left"
+                      className={`w-full px-3 py-2 border rounded-lg text-left ${
+                        abgErrors.HCO3 ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
                       placeholder="24"
                     />
+                    {abgErrors.HCO3 && (
+                      <p className="text-red-500 text-xs mt-1">{abgErrors.HCO3}</p>
+                    )}
+                    {showValidation && (
+                      <NormalRangeIndicator 
+                        value={abgValues.HCO3} 
+                        normalMin={22} 
+                        normalMax={26} 
+                        unit="mEq/L" 
+                      />
+                    )}
                   </div>
                 </div>
 
