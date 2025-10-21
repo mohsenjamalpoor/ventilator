@@ -7,20 +7,8 @@ export default function VentilatorHome() {
   const [age, setAge] = useState('')
   const [ageUnit, setAgeUnit] = useState('months')
   const [disease, setDisease] = useState('')  
-  const [patientType, setPatientType] = useState(null)
+  const [ventilatorType, setVentilatorType] = useState(null)
   const [errors, setErrors] = useState({})
-
-  const calculatePatientType = (ageValue, unit) => {
-    let ageInMonths = ageValue
-    
-    if (unit === 'days') {
-      ageInMonths = ageValue / 30
-    } else if (unit === 'years') {
-      ageInMonths = ageValue * 12
-    }
-    
-    return ageInMonths < 2 ? 'infant' : 'pediatric'
-  }
 
   const validateForm = () => {
     const newErrors = {}
@@ -41,12 +29,9 @@ export default function VentilatorHome() {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    
+  const handleVentilatorSelect = (type) => {
     if (validateForm()) {
-      const type = calculatePatientType(parseFloat(age), ageUnit)
-      setPatientType(type)
+      setVentilatorType(type)
     }
   }
 
@@ -55,13 +40,12 @@ export default function VentilatorHome() {
     setAge('')
     setAgeUnit('months')
     setDisease('') 
-    setPatientType(null)
+    setVentilatorType(null)
     setErrors({})
   }
 
-  // اگر بیمار تشخیص داده شد، صفحه مربوطه را نمایش بده
-  
-  if (patientType === 'infant') {
+  // اگر نوع ونتیلاتور انتخاب شد، صفحه مربوطه را نمایش بده
+  if (ventilatorType === 'pressure-controlled') {
     return <InfantVentilator 
       weight={weight} 
       age={age} 
@@ -71,7 +55,7 @@ export default function VentilatorHome() {
     />
   }
   
-  if (patientType === 'pediatric') {
+  if (ventilatorType === 'volume-controlled') {
     return <PediatricVentilator 
       weight={weight} 
       age={age} 
@@ -87,12 +71,12 @@ export default function VentilatorHome() {
       <div className="max-w-md mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden">
         {/* هدر */}
         <div className="bg-gradient-to-r from-blue-600 to-cyan-600 p-6 text-white text-center">
-          <h1 className="text-2xl font-bold mb-2">سیستم تنظیم ونتیلاتور</h1>
+          <h1 className="text-2xl font-bold mb-2"> آموزش ونتیلاتور</h1>
           <p className="text-blue-100">لطفا اطلاعات بیمار را وارد کنید</p>
         </div>
 
         {/* فرم ورود اطلاعات */}
-        <form onSubmit={handleSubmit} className="p-6">
+        <div className="p-6">
           {/* فیلد وزن */}
           <div className="mb-6">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="weight">
@@ -149,7 +133,7 @@ export default function VentilatorHome() {
             )}
           </div>
 
-          {/* فیلد جدید برای بیماری */}
+          {/* فیلد بیماری */}
           <div className="mb-6">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="disease">
               بیماری بیمار
@@ -178,23 +162,42 @@ export default function VentilatorHome() {
             )}
           </div>
 
-          {/* دکمه‌ها */}
+          {/* دکمه‌های انتخاب نوع ونتیلاتور */}
+          <div className="mb-6">
+            <label className="block text-gray-700 text-sm font-bold mb-3">
+              انتخاب نوع ونتیلاتور
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => handleVentilatorSelect('pressure-controlled')}
+                className="bg-rose-600 hover:bg-rose-700 text-white py-4 px-4 rounded-lg font-bold transition-colors text-center"
+              >
+                فشار ثابت
+                <div className="text-xs mt-1 opacity-90">(مخصوص نوزادان)</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleVentilatorSelect('volume-controlled')}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white py-4 px-4 rounded-lg font-bold transition-colors text-center"
+              >
+                حجم ثابت
+                <div className="text-xs mt-1 opacity-90">(مخصوص کودکان)</div>
+              </button>
+            </div>
+          </div>
+
+          {/* دکمه پاک کردن */}
           <div className="flex gap-3">
-            <button
-              type="submit"
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-bold transition-colors"
-            >
-              محاسبه تنظیمات
-            </button>
             <button
               type="button"
               onClick={handleReset}
-              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              پاک کردن
+              پاک کردن فرم
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   )
