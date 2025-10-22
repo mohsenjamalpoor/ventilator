@@ -1,5 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
-import { Volume2, RotateCcw } from 'lucide-react'
+import React, { useState } from 'react'
 
 export default function PediatricVentilator({ weight, age, ageUnit, disease, onBack }) {
   // تنظیمات اصلی اولیه
@@ -30,15 +29,8 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
   const [showModeModal, setShowModeModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [tempSettings, setTempSettings] = useState(initialSettings)
-  
-  // state جدید برای کنترل پیچ
-  const [selectedParameter, setSelectedParameter] = useState(null)
-  const [isKnobDragging, setIsKnobDragging] = useState(false)
-  const knobRef = useRef(null)
-  const startAngleRef = useRef(0)
-  const startValueRef = useRef(0)
 
-  // مد مورد نظر
+  //   مد مورد نظر
   const ventilatorModes = {
     SIMV: {
       name: 'SIMV - تهویه متناوب اجباری هماهنگ',
@@ -72,77 +64,6 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
         { key: 'ieRatio', label: 'نسبت I:E', type: 'select', options: ['1:1', '1:1.5', '1:2', '1:2.5', '1:3'] }
       ]
     }
-  }
-
-  // توابع پیچ پیشرفته
-  const valueToAngle = (val, param) => {
-    if (!param) return -135
-    const range = param.max - param.min
-    const normalizedValue = (val - param.min) / range
-    return -135 + normalizedValue * 270
-  }
-
-  const angleToValue = (angle, param) => {
-    if (!param) return 0
-    let normalizedAngle = angle + 135
-    if (normalizedAngle < 0) normalizedAngle = 0
-    if (normalizedAngle > 270) normalizedAngle = 270
-    
-    const normalizedValue = normalizedAngle / 270
-    const rawValue = param.min + normalizedValue * (param.max - param.min)
-    const steppedValue = Math.round(rawValue / param.step) * param.step
-    return Math.max(param.min, Math.min(param.max, steppedValue))
-  }
-
-  const getAngleFromEvent = (e, center) => {
-    const x = (e.clientX || e.touches?.[0]?.clientX) - center.x
-    const y = (e.clientY || e.touches?.[0]?.clientY) - center.y
-    return Math.atan2(y, x) * (180 / Math.PI)
-  }
-
-  const handleKnobStart = (e) => {
-    if (!selectedParameter) return
-    e.preventDefault()
-    setIsKnobDragging(true)
-    const rect = knobRef.current.getBoundingClientRect()
-    const center = {
-      x: rect.left + rect.width / 2,
-      y: rect.top + rect.height / 2
-    }
-    startAngleRef.current = getAngleFromEvent(e, center)
-    
-    const param = ventilatorModes[selectedMode].parameters.find(p => p.key === selectedParameter)
-    startValueRef.current = parseFloat(currentSettings[selectedParameter]) || param.min
-  }
-
-  const handleKnobMove = (e) => {
-    if (!isKnobDragging || !selectedParameter) return
-    e.preventDefault()
-    
-    const param = ventilatorModes[selectedMode].parameters.find(p => p.key === selectedParameter)
-    if (!param) return
-
-    const rect = knobRef.current.getBoundingClientRect()
-    const center = {
-      x: rect.left + rect.width / 2,
-      y: rect.top + rect.height / 2
-    }
-    
-    const currentAngle = getAngleFromEvent(e, center)
-    const angleDiff = currentAngle - startAngleRef.current
-    
-    const currentKnobAngle = valueToAngle(startValueRef.current, param)
-    const newAngle = currentKnobAngle + angleDiff
-    const newValue = angleToValue(newAngle, param)
-    
-    setCurrentSettings(prev => ({
-      ...prev,
-      [selectedParameter]: param.key === 'tidalVolume' ? newValue.toFixed(1) : newValue
-    }))
-  }
-
-  const handleKnobEnd = () => {
-    setIsKnobDragging(false)
   }
 
   // اعتبارسنجی مقادیر ABG برای کودکان
@@ -364,7 +285,6 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
     setSelectedMode('SIMV')
     setAbgErrors({})
     setShowValidation(false)
-    setSelectedParameter(null)
   }
 
   const handleModeChange = (mode) => {
@@ -407,139 +327,20 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
     }))
   }
 
-  // توابع جدید برای کنترل پیچ
-  const selectParameter = (parameter) => {
-    setSelectedParameter(parameter)
-  }
-
-  // کامپوننت پیچ کنترل داخلی مانیتور
-  const MonitorKnobController = () => {
-   
-
-    const param = ventilatorModes[selectedMode].parameters.find(p => p.key === selectedParameter)
-    if (!param) return null
-
-    const currentValue = parseFloat(currentSettings[selectedParameter]) || param.min
-    const percentage = ((currentValue - param.min) / (param.max - param.min)) * 100
-
-    const circumference = 2 * Math.PI * 45
-    const strokeDashoffset = circumference - (percentage / 100) * (circumference * 0.75)
-
-    return (
-      <div 
-        className="bg-gray-800 rounded-xl p-6 border-2 border-teal-500 h-64 flex flex-col"
-        onMouseMove={handleKnobMove}
-        onMouseUp={handleKnobEnd}
-        onTouchMove={handleKnobMove}
-        onTouchEnd={handleKnobEnd}
-      >
-        <div className="text-center mb-4 flex-shrink-0">
-          <h3 className="text-teal-300 text-lg font-bold mb-1">{param.label}</h3>
-          <p className="text-2xl font-bold text-white mb-1">{currentValue} {param.unit}</p>
-          <p className="text-teal-400 text-xs">محدوده: {param.min} - {param.max} {param.unit}</p>
-        </div>
-
-        <div className="relative flex items-center justify-center flex-1">
-          {/* دایره پیشرفت */}
-          <svg className="transform rotate-[135deg]" width="140" height="140">
-            {/* دایره پس‌زمینه */}
-            <circle
-              cx="70"
-              cy="70"
-              r="45"
-              stroke="rgba(100, 116, 139, 0.3)"
-              strokeWidth="6"
-              fill="none"
-              strokeDasharray={`${circumference * 0.75} ${circumference * 0.25}`}
-              strokeLinecap="round"
-            />
-            {/* دایره پیشرفت */}
-            <circle
-              cx="70"
-              cy="70"
-              r="45"
-              stroke="url(#monitorGradient)"
-              strokeWidth="6"
-              fill="none"
-              strokeDasharray={circumference}
-              strokeDashoffset={strokeDashoffset}
-              strokeLinecap="round"
-              className="transition-all duration-100 ease-out"
-            />
-            <defs>
-              <linearGradient id="monitorGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#06b6d4" />
-                <stop offset="50%" stopColor="#8b5cf6" />
-                <stop offset="100%" stopColor="#ec4899" />
-              </linearGradient>
-            </defs>
-          </svg>
-          
-          {/* دکمه پیچی */}
-          <div
-            ref={knobRef}
-            onMouseDown={handleKnobStart}
-            onTouchStart={handleKnobStart}
-            className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-gradient-to-br from-slate-700 to-slate-800 rounded-full shadow-2xl cursor-pointer select-none transition-transform duration-100 ${
-              isKnobDragging ? 'scale-105' : 'hover:scale-105'
-            }`}
-            style={{
-              transform: `translate(-50%, -50%) rotate(${valueToAngle(currentValue, param)}deg)`,
-            }}
-          >
-            {/* خطوط روی پیچ */}
-            <div className="absolute inset-0 rounded-full">
-              {[...Array(12)].map((_, i) => (
-                <div
-                  key={i}
-                  className="absolute top-2 left-1/2 w-0.5 h-3 bg-slate-600 rounded-full"
-                  style={{
-                    transform: `translateX(-50%) rotate(${i * 30}deg)`,
-                    transformOrigin: '50% 42px',
-                  }}
-                />
-              ))}
-            </div>
-            
-            {/* نشانگر */}
-            <div className="absolute top-1.5 left-1/2 w-1 h-5 bg-gradient-to-b from-cyan-400 to-pink-400 rounded-full -translate-x-1/2 shadow-lg" />
-            
-            {/* مرکز پیچ */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-gradient-to-br from-slate-800 to-slate-900 rounded-full shadow-inner flex items-center justify-center">
-              <div className="text-white text-xs font-bold">{Math.round(percentage)}%</div>
-            </div>
-          </div>
-        </div>
-
-     
-      </div>
-    )
-  }
-
   // رندر تنظیمات بر اساس مد انتخاب شده برای کودکان
   const renderModeSpecificSettings = () => {
     switch(selectedMode) {
       case 'SIMV':
         return (
           <>
-            <div 
-              className={`bg-blue-900 rounded-lg p-4 border-2 cursor-pointer transition-all ${
-                selectedParameter === 'tidalVolume' ? 'border-yellow-400 shadow-lg shadow-yellow-400/20' : 'border-blue-500'
-              }`}
-              onClick={() => selectParameter('tidalVolume')}
-            >
+            <div className="bg-blue-900 rounded-lg p-4 border-2 border-blue-500">
               <div className="text-center">
                 <h3 className="text-blue-300 text-sm mb-1">حجم جاری</h3>
                 <p className="text-2xl font-bold text-white mb-1">{currentSettings.tidalVolume} ml</p>
                 <p className="text-blue-400 text-xs">6 ml/kg</p>
               </div>
             </div>
-            <div 
-              className={`bg-green-900 rounded-lg p-4 border-2 cursor-pointer transition-all ${
-                selectedParameter === 'pressureSupport' ? 'border-yellow-400 shadow-lg shadow-yellow-400/20' : 'border-green-500'
-              }`}
-              onClick={() => selectParameter('pressureSupport')}
-            >
+            <div className="bg-green-900 rounded-lg p-4 border-2 border-green-500">
               <div className="text-center">
                 <h3 className="text-green-300 text-sm mb-1">حمایت فشاری</h3>
                 <p className="text-2xl font-bold text-white mb-1">{currentSettings.pressureSupport} cmH₂O</p>
@@ -551,24 +352,14 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
       case 'CPAP':
         return (
           <>
-            <div 
-              className={`bg-blue-900 rounded-lg p-4 border-2 cursor-pointer transition-all ${
-                selectedParameter === 'cpap' ? 'border-yellow-400 shadow-lg shadow-yellow-400/20' : 'border-blue-500'
-              }`}
-              onClick={() => selectParameter('cpap')}
-            >
+            <div className="bg-blue-900 rounded-lg p-4 border-2 border-blue-500">
               <div className="text-center">
                 <h3 className="text-blue-300 text-sm mb-1">سطح CPAP</h3>
                 <p className="text-2xl font-bold text-white mb-1">{currentSettings.cpap} cmH₂O</p>
                 <p className="text-blue-400 text-xs">CPAP Level</p>
               </div>
             </div>
-            <div 
-              className={`bg-green-900 rounded-lg p-4 border-2 cursor-pointer transition-all ${
-                selectedParameter === 'pressureSupport' ? 'border-yellow-400 shadow-lg shadow-yellow-400/20' : 'border-green-500'
-              }`}
-              onClick={() => selectParameter('pressureSupport')}
-            >
+            <div className="bg-green-900 rounded-lg p-4 border-2 border-green-500">
               <div className="text-center">
                 <h3 className="text-green-300 text-sm mb-1">حمایت فشاری</h3>
                 <p className="text-2xl font-bold text-white mb-1">{currentSettings.pressureSupport} cmH₂O</p>
@@ -580,12 +371,7 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
       case 'PRVC':
         return (
           <>
-            <div 
-              className={`bg-blue-900 rounded-lg p-4 border-2 cursor-pointer transition-all ${
-                selectedParameter === 'tidalVolume' ? 'border-yellow-400 shadow-lg shadow-yellow-400/20' : 'border-blue-500'
-              }`}
-              onClick={() => selectParameter('tidalVolume')}
-            >
+            <div className="bg-blue-900 rounded-lg p-4 border-2 border-blue-500">
               <div className="text-center">
                 <h3 className="text-blue-300 text-sm mb-1">حجم جاری</h3>
                 <p className="text-2xl font-bold text-white mb-1">{currentSettings.tidalVolume} ml</p>
@@ -871,6 +657,7 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
               {/* نمایش مد فعلی */}
               <div className="bg-teal-50 rounded-xl p-4 border-2 border-teal-200 mb-4">
                 <div className="text-center">
+             
                   <p className="text-teal-800 text-xl font-semibold mt-2">
                     {ventilatorModes[selectedMode]?.name}
                   </p>
@@ -925,231 +712,209 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
 
           {/* مانیتور ونتیلاتور و تفسیر ABG */}
           <div className="lg:col-span-2">
-            <div className="bg-gray-900 rounded-2xl shadow-lg p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-white">مانیتور ونتیلاتور - کودکان</h2>
+            <div className="grid grid-cols-1 gap-6">
+              {/* مانیتور ونتیلاتور */}
+              <div className="bg-gray-600 rounded-2xl shadow-lg p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-white">مانیتور ونتیلاتور - کودکان</h2>
+                  <button
+                    onClick={openSettingsModal}
+                    className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    {currentSettings.mode}
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  {/* تنظیمات عمومی */}
+                  <div className="bg-green-900 rounded-lg p-4 border-2 border-green-500">
+                    <div className="text-center">
+                      <h3 className="text-green-300 text-sm mb-1">میزان تنفس</h3>
+                      <p className="text-2xl font-bold text-white mb-1">{currentSettings.respiratoryRate} /min</p>
+                      <p className="text-green-400 text-xs">تنفس در دقیقه</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-purple-900 rounded-lg p-4 border-2 border-purple-500">
+                    <div className="text-center">
+                      <h3 className="text-purple-300 text-sm mb-1">FiO₂</h3>
+                      <p className="text-2xl font-bold text-white mb-1">{currentSettings.fio2}%</p>
+                      <p className="text-purple-400 text-xs">درصد اکسیژن</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-red-900 rounded-lg p-4 border-2 border-red-500">
+                    <div className="text-center">
+                      <h3 className="text-red-300 text-sm mb-1">PEEP</h3>
+                      <p className="text-2xl font-bold text-white mb-1">{currentSettings.peep} cmH₂O</p>
+                      <p className="text-red-400 text-xs">فشار بازدم</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-indigo-900 rounded-lg p-4 border-2 border-indigo-500">
+                    <div className="text-center">
+                      <h3 className="text-indigo-300 text-sm mb-1">نسبت I:E</h3>
+                      <p className="text-2xl font-bold text-white mb-1">{currentSettings.ieRatio}</p>
+                      <p className="text-indigo-400 text-xs">نسبت دم به بازدم</p>
+                    </div>
+                  </div>
+
+                  {/* تنظیمات خاص هر مد */}
+                  {renderModeSpecificSettings()}
+                </div>
+
+                {/* وضعیت کنونی */}
+                {abgInterpretation && (
+                  <div className="mt-4 p-3 bg-yellow-900 border border-yellow-600 rounded-lg">
+                    <p className="text-yellow-200 text-center font-semibold">
+                      وضعیت: {abgInterpretation}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* بخش تفسیر ABG */}
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <h2 className="text-xl font-bold text-gray-800 mb-4">تفسیر ABG و تنظیمات پیشنهادی</h2>
+                
+                {/* فرم ورود ABG */}
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">pH</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={abgValues.pH}
+                      onChange={(e) => handleAbgChange('pH', e.target.value)}
+                      className={`w-full px-3 py-2 border rounded-lg text-left ${
+                        abgErrors.pH ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
+                      placeholder="7.40"
+                    />
+                    {abgErrors.pH && (
+                      <p className="text-red-500 text-xs mt-1">{abgErrors.pH}</p>
+                    )}
+                    {showValidation && (
+                      <NormalRangeIndicator 
+                        value={abgValues.pH} 
+                        normalMin={7.35} 
+                        normalMax={7.45} 
+                        unit="" 
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">pCO₂ (mmHg)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={abgValues.pCO2}
+                      onChange={(e) => handleAbgChange('pCO2', e.target.value)}
+                      className={`w-full px-3 py-2 border rounded-lg text-left ${
+                        abgErrors.pCO2 ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
+                      placeholder="40"
+                    />
+                    {abgErrors.pCO2 && (
+                      <p className="text-red-500 text-xs mt-1">{abgErrors.pCO2}</p>
+                    )}
+                    {showValidation && (
+                      <NormalRangeIndicator 
+                        value={abgValues.pCO2} 
+                        normalMin={35} 
+                        normalMax={45} 
+                        unit="mmHg" 
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">pO₂ (mmHg)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={abgValues.pO2}
+                      onChange={(e) => handleAbgChange('pO2', e.target.value)}
+                      className={`w-full px-3 py-2 border rounded-lg text-left ${
+                        abgErrors.pO2 ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
+                      placeholder="80"
+                    />
+                    {abgErrors.pO2 && (
+                      <p className="text-red-500 text-xs mt-1">{abgErrors.pO2}</p>
+                    )}
+                    {showValidation && (
+                      <NormalRangeIndicator 
+                        value={abgValues.pO2} 
+                        normalMin={80} 
+                        normalMax={100} 
+                        unit="mmHg" 
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">HCO₃ (mEq/L)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={abgValues.HCO3}
+                      onChange={(e) => handleAbgChange('HCO3', e.target.value)}
+                      className={`w-full px-3 py-2 border rounded-lg text-left ${
+                        abgErrors.HCO3 ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
+                      placeholder="24"
+                    />
+                    {abgErrors.HCO3 && (
+                      <p className="text-red-500 text-xs mt-1">{abgErrors.HCO3}</p>
+                    )}
+                    {showValidation && (
+                      <NormalRangeIndicator 
+                        value={abgValues.HCO3} 
+                        normalMin={22} 
+                        normalMax={26} 
+                        unit="mEq/L" 
+                      />
+                    )}
+                  </div>
+                </div>
+
                 <button
-                  onClick={openSettingsModal}
-                  className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                  onClick={interpretABG}
+                  className="w-full bg-teal-600 hover:bg-teal-700 text-white py-3 rounded-lg font-bold transition-colors mb-6"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                  {currentSettings.mode}
+                  تفسیر ABG و اعمال تنظیمات
                 </button>
-              </div>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                {/* تنظیمات اصلی */}
-                <div className="lg:col-span-3">
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* تنظیمات عمومی */}
-                    <div 
-                      className={`bg-green-900 rounded-lg p-4 border-2 cursor-pointer transition-all ${
-                        selectedParameter === 'respiratoryRate' ? 'border-yellow-400 shadow-lg shadow-yellow-400/20' : 'border-green-500'
-                      }`}
-                      onClick={() => selectParameter('respiratoryRate')}
-                    >
-                      <div className="text-center">
-                        <h3 className="text-green-300 text-sm mb-1">میزان تنفس</h3>
-                        <p className="text-2xl font-bold text-white mb-1">{currentSettings.respiratoryRate} /min</p>
-                        <p className="text-green-400 text-xs">تنفس در دقیقه</p>
+
+                {/* نتایج تفسیر */}
+                {abgInterpretation && (
+                  <div className="space-y-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h3 className="font-bold text-blue-800 mb-2">تفسیر ABG:</h3>
+                      <p className="text-blue-700 font-semibold text-lg">{abgInterpretation}</p>
+                    </div>
+
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <h3 className="font-bold text-green-800 mb-2">📝 تغییرات اعمال شده:</h3>
+                      <div className="text-green-700">
+                        {initialSettings.respiratoryRate !== currentSettings.respiratoryRate && (
+                          <p>• میزان تنفس: {initialSettings.respiratoryRate} → <strong>{currentSettings.respiratoryRate}</strong> /min</p>
+                        )}
+                        {initialSettings.tidalVolume !== currentSettings.tidalVolume && (
+                          <p>• حجم جاری: {initialSettings.tidalVolume} → <strong>{currentSettings.tidalVolume}</strong> ml</p>
+                        )}
+                        {initialSettings.fio2 !== currentSettings.fio2 && (
+                          <p>• FiO₂: {initialSettings.fio2}% → <strong>{currentSettings.fio2}%</strong></p>
+                        )}
+                        {initialSettings.peep !== currentSettings.peep && (
+                          <p>• PEEP: {initialSettings.peep} → <strong>{currentSettings.peep}</strong> cmH₂O</p>
+                        )}
                       </div>
-                    </div>
-
-                    <div 
-                      className={`bg-purple-900 rounded-lg p-4 border-2 cursor-pointer transition-all ${
-                        selectedParameter === 'fio2' ? 'border-yellow-400 shadow-lg shadow-yellow-400/20' : 'border-purple-500'
-                      }`}
-                      onClick={() => selectParameter('fio2')}
-                    >
-                      <div className="text-center">
-                        <h3 className="text-purple-300 text-sm mb-1">FiO₂</h3>
-                        <p className="text-2xl font-bold text-white mb-1">{currentSettings.fio2}%</p>
-                        <p className="text-purple-400 text-xs">درصد اکسیژن</p>
-                      </div>
-                    </div>
-
-                    <div 
-                      className={`bg-red-900 rounded-lg p-4 border-2 cursor-pointer transition-all ${
-                        selectedParameter === 'peep' ? 'border-yellow-400 shadow-lg shadow-yellow-400/20' : 'border-red-500'
-                      }`}
-                      onClick={() => selectParameter('peep')}
-                    >
-                      <div className="text-center">
-                        <h3 className="text-red-300 text-sm mb-1">PEEP</h3>
-                        <p className="text-2xl font-bold text-white mb-1">{currentSettings.peep} cmH₂O</p>
-                        <p className="text-red-400 text-xs">فشار بازدم</p>
-                      </div>
-                    </div>
-
-                    <div className="bg-indigo-900 rounded-lg p-4 border-2 border-indigo-500">
-                      <div className="text-center">
-                        <h3 className="text-indigo-300 text-sm mb-1">نسبت I:E</h3>
-                        <p className="text-2xl font-bold text-white mb-1">{currentSettings.ieRatio}</p>
-                        <p className="text-indigo-400 text-xs">نسبت دم به بازدم</p>
-                      </div>
-                    </div>
-
-                    {/* تنظیمات خاص هر مد */}
-                    {renderModeSpecificSettings()}
-                  </div>
-
-                  {/* وضعیت کنونی */}
-                  {abgInterpretation && (
-                    <div className="mt-4 p-3 bg-yellow-900 border border-yellow-600 rounded-lg">
-                      <p className="text-yellow-200 text-center font-semibold">
-                        وضعیت: {abgInterpretation}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* پیچ کنترل داخلی */}
-                <div className="lg:col-span-1">
-                  <MonitorKnobController />
-                </div>
-              </div>
-            </div>
-
-            {/* بخش تفسیر ABG */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 mt-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">تفسیر ABG و تنظیمات پیشنهادی</h2>
-              
-              {/* فرم ورود ABG */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">pH</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={abgValues.pH}
-                    onChange={(e) => handleAbgChange('pH', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg text-left ${
-                      abgErrors.pH ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                    }`}
-                    placeholder="7.40"
-                  />
-                  {abgErrors.pH && (
-                    <p className="text-red-500 text-xs mt-1">{abgErrors.pH}</p>
-                  )}
-                  {showValidation && (
-                    <NormalRangeIndicator 
-                      value={abgValues.pH} 
-                      normalMin={7.35} 
-                      normalMax={7.45} 
-                      unit="" 
-                    />
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">pCO₂ (mmHg)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={abgValues.pCO2}
-                    onChange={(e) => handleAbgChange('pCO2', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg text-left ${
-                      abgErrors.pCO2 ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                    }`}
-                    placeholder="40"
-                  />
-                  {abgErrors.pCO2 && (
-                    <p className="text-red-500 text-xs mt-1">{abgErrors.pCO2}</p>
-                  )}
-                  {showValidation && (
-                    <NormalRangeIndicator 
-                      value={abgValues.pCO2} 
-                      normalMin={35} 
-                      normalMax={45} 
-                      unit="mmHg" 
-                    />
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">pO₂ (mmHg)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={abgValues.pO2}
-                    onChange={(e) => handleAbgChange('pO2', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg text-left ${
-                      abgErrors.pO2 ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                    }`}
-                    placeholder="80"
-                  />
-                  {abgErrors.pO2 && (
-                    <p className="text-red-500 text-xs mt-1">{abgErrors.pO2}</p>
-                  )}
-                  {showValidation && (
-                    <NormalRangeIndicator 
-                      value={abgValues.pO2} 
-                      normalMin={80} 
-                      normalMax={100} 
-                      unit="mmHg" 
-                    />
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">HCO₃ (mEq/L)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={abgValues.HCO3}
-                    onChange={(e) => handleAbgChange('HCO3', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg text-left ${
-                      abgErrors.HCO3 ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                    }`}
-                    placeholder="24"
-                  />
-                  {abgErrors.HCO3 && (
-                    <p className="text-red-500 text-xs mt-1">{abgErrors.HCO3}</p>
-                  )}
-                  {showValidation && (
-                    <NormalRangeIndicator 
-                      value={abgValues.HCO3} 
-                      normalMin={22} 
-                      normalMax={26} 
-                      unit="mEq/L" 
-                    />
-                  )}
-                </div>
-              </div>
-
-              <button
-                onClick={interpretABG}
-                className="w-full bg-teal-600 hover:bg-teal-700 text-white py-3 rounded-lg font-bold transition-colors mb-6"
-              >
-                تفسیر ABG و اعمال تنظیمات
-              </button>
-
-              {/* نتایج تفسیر */}
-              {abgInterpretation && (
-                <div className="space-y-4">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h3 className="font-bold text-blue-800 mb-2">تفسیر ABG:</h3>
-                    <p className="text-blue-700 font-semibold text-lg">{abgInterpretation}</p>
-                  </div>
-
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <h3 className="font-bold text-green-800 mb-2">📝 تغییرات اعمال شده:</h3>
-                    <div className="text-green-700">
-                      {initialSettings.respiratoryRate !== currentSettings.respiratoryRate && (
-                        <p>• میزان تنفس: {initialSettings.respiratoryRate} → <strong>{currentSettings.respiratoryRate}</strong> /min</p>
-                      )}
-                      {initialSettings.tidalVolume !== currentSettings.tidalVolume && (
-                        <p>• حجم جاری: {initialSettings.tidalVolume} → <strong>{currentSettings.tidalVolume}</strong> ml</p>
-                      )}
-                      {initialSettings.fio2 !== currentSettings.fio2 && (
-                        <p>• FiO₂: {initialSettings.fio2}% → <strong>{currentSettings.fio2}%</strong></p>
-                      )}
-                      {initialSettings.peep !== currentSettings.peep && (
-                        <p>• PEEP: {initialSettings.peep} → <strong>{currentSettings.peep}</strong> cmH₂O</p>
-                      )}
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
