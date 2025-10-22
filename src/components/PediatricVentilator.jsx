@@ -9,7 +9,7 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
     peep: 5,
     ieRatio: '1:2',
     flowRate: 60,
-    mode: 'VCV'
+    mode: 'SIMV'
   }
 
   // state برای تنظیمات فعال
@@ -21,37 +21,13 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
     HCO3: ''
   })
   const [abgInterpretation, setAbgInterpretation] = useState('')
-  const [selectedMode, setSelectedMode] = useState('VCV')
+  const [selectedMode, setSelectedMode] = useState('SIMV')
   const [abgErrors, setAbgErrors] = useState({})
   const [showValidation, setShowValidation] = useState(false)
   const [showModeModal, setShowModeModal] = useState(false)
 
-  // مدهای مختلف ونتیلاتور برای کودکان
+  // فقط سه مد مورد نظر
   const ventilatorModes = {
-    VCV: {
-      name: 'VCV - حجم کنترل',
-      description: 'حجم جاری ثابت، فشار متغیر',
-      settings: {
-        tidalVolume: (weight * 6).toFixed(1),
-        respiratoryRate: 12,
-        fio2: 40,
-        peep: 5,
-        ieRatio: '1:2',
-        flowRate: 60
-      }
-    },
-    PCV: {
-      name: 'PCV - فشار کنترل',
-      description: 'فشار دمی ثابت، حجم متغیر',
-      settings: {
-        pip: 25,
-        respiratoryRate: 12,
-        fio2: 40,
-        peep: 5,
-        ieRatio: '1:2',
-        inspiratoryTime: 1.0
-      }
-    },
     SIMV: {
       name: 'SIMV - تهویه متناوب اجباری هماهنگ',
       description: 'ترکیب تنفس اجباری و خودبخودی',
@@ -73,15 +49,6 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
         pressureSupport: 5
       }
     },
-    PSV: {
-      name: 'PSV - حمایت فشاری',
-      description: 'حمایت از تنفس خودبخودی بیمار',
-      settings: {
-        pressureSupport: 12,
-        fio2: 40,
-        peep: 5
-      }
-    },
     PRVC: {
       name: 'PRVC - حجم جاری تنظیم‌شده با فشار',
       description: 'ترکیب مزایای VCV و PCV',
@@ -91,17 +58,6 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
         fio2: 40,
         peep: 5,
         ieRatio: '1:2'
-      }
-    },
-    APRV: {
-      name: 'APRV - تهویه با آزادسازی فشار راه هوایی',
-      description: 'مد پیشرفته برای بیماران با compliance پایین',
-      settings: {
-        phigh: 28,
-        plow: 8,
-        timeHigh: 4.5,
-        timeLow: 0.8,
-        fio2: 40
       }
     }
   }
@@ -207,7 +163,7 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
         
         // تنظیمات برای اسیدوز تنفسی
         newSettings.respiratoryRate = Math.min(20, currentSettings.respiratoryRate + 2)
-        if (selectedMode === 'VCV' || selectedMode === 'SIMV') {
+        if (selectedMode === 'SIMV' || selectedMode === 'PRVC') {
           newSettings.tidalVolume = (weight * 10).toFixed(1)
         }
       } else if (HCO3Num < 22) {
@@ -238,7 +194,7 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
         
         // تنظیمات برای آلکالوز تنفسی
         newSettings.respiratoryRate = Math.max(8, currentSettings.respiratoryRate - 2)
-        if (selectedMode === 'VCV' || selectedMode === 'SIMV') {
+        if (selectedMode === 'SIMV' || selectedMode === 'PRVC') {
           newSettings.tidalVolume = (weight * 6).toFixed(1)
         }
       } else if (HCO3Num > 26) {
@@ -322,7 +278,7 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
     setCurrentSettings(initialSettings)
     setAbgValues({ pH: '', pCO2: '', pO2: '', HCO3: '' })
     setAbgInterpretation('')
-    setSelectedMode('VCV')
+    setSelectedMode('SIMV')
     setAbgErrors({})
     setShowValidation(false)
   }
@@ -349,44 +305,6 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
   // رندر تنظیمات بر اساس مد انتخاب شده برای کودکان
   const renderModeSpecificSettings = () => {
     switch(selectedMode) {
-      case 'VCV':
-        return (
-          <>
-            <div className="bg-blue-900 rounded-lg p-4 border-2 border-blue-500">
-              <div className="text-center">
-                <h3 className="text-blue-300 text-sm mb-1">حجم جاری</h3>
-                <p className="text-2xl font-bold text-white mb-1">{currentSettings.tidalVolume} ml</p>
-                <p className="text-blue-400 text-xs">6 ml/kg</p>
-              </div>
-            </div>
-            <div className="bg-green-900 rounded-lg p-4 border-2 border-green-500">
-              <div className="text-center">
-                <h3 className="text-green-300 text-sm mb-1">سرعت جریان</h3>
-                <p className="text-2xl font-bold text-white mb-1">{currentSettings.flowRate} L/min</p>
-                <p className="text-green-400 text-xs">Flow Rate</p>
-              </div>
-            </div>
-          </>
-        )
-      case 'PCV':
-        return (
-          <>
-            <div className="bg-blue-900 rounded-lg p-4 border-2 border-blue-500">
-              <div className="text-center">
-                <h3 className="text-blue-300 text-sm mb-1">فشار دمی (PIP)</h3>
-                <p className="text-2xl font-bold text-white mb-1">{currentSettings.pip} cmH₂O</p>
-                <p className="text-blue-400 text-xs">Peak Pressure</p>
-              </div>
-            </div>
-            <div className="bg-purple-900 rounded-lg p-4 border-2 border-purple-500">
-              <div className="text-center">
-                <h3 className="text-purple-300 text-sm mb-1">زمان دم</h3>
-                <p className="text-2xl font-bold text-white mb-1">{currentSettings.inspiratoryTime} s</p>
-                <p className="text-purple-400 text-xs">Inspiratory Time</p>
-              </div>
-            </div>
-          </>
-        )
       case 'SIMV':
         return (
           <>
@@ -425,18 +343,6 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
             </div>
           </>
         )
-      case 'PSV':
-        return (
-          <>
-            <div className="bg-blue-900 rounded-lg p-4 border-2 border-blue-500">
-              <div className="text-center">
-                <h3 className="text-blue-300 text-sm mb-1">حمایت فشاری</h3>
-                <p className="text-2xl font-bold text-white mb-1">{currentSettings.pressureSupport} cmH₂O</p>
-                <p className="text-blue-400 text-xs">Pressure Support</p>
-              </div>
-            </div>
-          </>
-        )
       case 'PRVC':
         return (
           <>
@@ -452,32 +358,6 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
                 <h3 className="text-green-300 text-sm mb-1">حداکثر فشار</h3>
                 <p className="text-2xl font-bold text-white mb-1">30 cmH₂O</p>
                 <p className="text-green-400 text-xs">Max Pressure</p>
-              </div>
-            </div>
-          </>
-        )
-      case 'APRV':
-        return (
-          <>
-            <div className="bg-blue-900 rounded-lg p-4 border-2 border-blue-500">
-              <div className="text-center">
-                <h3 className="text-blue-300 text-sm mb-1">فشار بالا</h3>
-                <p className="text-2xl font-bold text-white mb-1">{currentSettings.phigh} cmH₂O</p>
-                <p className="text-blue-400 text-xs">P High</p>
-              </div>
-            </div>
-            <div className="bg-green-900 rounded-lg p-4 border-2 border-green-500">
-              <div className="text-center">
-                <h3 className="text-green-300 text-sm mb-1">فشار پایین</h3>
-                <p className="text-2xl font-bold text-white mb-1">{currentSettings.plow} cmH₂O</p>
-                <p className="text-green-400 text-xs">P Low</p>
-              </div>
-            </div>
-            <div className="bg-purple-900 rounded-lg p-4 border-2 border-purple-500">
-              <div className="text-center">
-                <h3 className="text-purple-300 text-sm mb-1">زمان فشار بالا</h3>
-                <p className="text-2xl font-bold text-white mb-1">{currentSettings.timeHigh} s</p>
-                <p className="text-purple-400 text-xs">Time High</p>
               </div>
             </div>
           </>
@@ -538,7 +418,7 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
 
           {/* محتوای مودال */}
           <div className="p-6 max-h-[60vh] overflow-y-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {Object.entries(ventilatorModes).map(([key, mode]) => (
                 <button
                   key={key}
@@ -558,13 +438,9 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
                   
                   {/* اطلاعات تکمیلی هر مد */}
                   <div className="mt-3 text-xs text-gray-500 text-right">
-                    {key === 'VCV' && 'مناسب برای بیماران با compliance ثابت'}
-                    {key === 'PCV' && 'مناسب برای بیماران با نشت هوا'}
                     {key === 'SIMV' && 'مناسب برای weaning از ونتیلاتور'}
                     {key === 'CPAP' && 'مناسب برای بیماران با تنفس خودبخودی'}
-                    {key === 'PSV' && 'مناسب برای کاهش کار تنفسی'}
                     {key === 'PRVC' && 'ترکیب مزایای VCV و PCV'}
-                    {key === 'APRV' && 'مد پیشرفته برای ARDS'}
                   </div>
                 </button>
               ))}
@@ -621,7 +497,7 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
           </div>
           
           {/* اطلاعات بیمار */}
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="mt-2 grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-teal-50 rounded-lg p-4 text-center">
               <p className="text-teal-600 text-sm">وزن بیمار</p>
               <p className="text-xl font-bold text-teal-800">{weight} kg</p>
@@ -676,20 +552,6 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
             <div className="bg-white rounded-2xl shadow-lg p-6">
               <h3 className="font-bold text-gray-800 mb-3">📋 درباره مد {ventilatorModes[selectedMode]?.name}:</h3>
               <div className="text-gray-700 text-sm space-y-2">
-                {selectedMode === 'VCV' && (
-                  <>
-                    <p>• حجم جاری ثابت در هر تنفس</p>
-                    <p>• مناسب برای بیماران با compliance ثابت</p>
-                    <p>• جلوگیری از volutrauma</p>
-                  </>
-                )}
-                {selectedMode === 'PCV' && (
-                  <>
-                    <p>• فشار دمی ثابت در هر تنفس</p>
-                    <p>• مناسب برای بیماران با نشت هوا</p>
-                    <p>• کاهش خطر barotrauma</p>
-                  </>
-                )}
                 {selectedMode === 'SIMV' && (
                   <>
                     <p>• ترکیب تنفس اجباری و خودبخودی</p>
@@ -704,25 +566,11 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
                     <p>• بهبود oxygenation</p>
                   </>
                 )}
-                {selectedMode === 'PSV' && (
-                  <>
-                    <p>• حمایت از تنفس خودبخودی بیمار</p>
-                    <p>• کاهش کار تنفسی</p>
-                    <p>• مناسب برای weaning</p>
-                  </>
-                )}
                 {selectedMode === 'PRVC' && (
                   <>
                     <p>• ترکیب مزایای VCV و PCV</p>
                     <p>• حجم جاری ثابت با کمترین فشار</p>
                     <p>• مناسب برای بیماران با compliance متغیر</p>
-                  </>
-                )}
-                {selectedMode === 'APRV' && (
-                  <>
-                    <p>• مد پیشرفته برای ARDS</p>
-                    <p>• بهبود recruitment آلوئولی</p>
-                    <p>• کاهش فشار میانگین راه هوایی</p>
                   </>
                 )}
               </div>
