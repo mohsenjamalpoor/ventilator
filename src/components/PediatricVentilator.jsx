@@ -657,7 +657,7 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
               {/* نمایش مد فعلی */}
               <div className="bg-teal-50 rounded-xl p-4 border-2 border-teal-200 mb-4">
                 <div className="text-center">
-                  <h3 className="text-teal-700 font-bold text-lg">مد فعلی</h3>
+             
                   <p className="text-teal-800 text-xl font-semibold mt-2">
                     {ventilatorModes[selectedMode]?.name}
                   </p>
