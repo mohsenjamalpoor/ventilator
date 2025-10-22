@@ -9,7 +9,9 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
     peep: 5,
     ieRatio: '1:2',
     flowRate: 60,
-    mode: 'SIMV'
+    mode: 'SIMV',
+    pressureSupport: 10,
+    cpap: 8
   }
 
   // state برای تنظیمات فعال
@@ -25,40 +27,42 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
   const [abgErrors, setAbgErrors] = useState({})
   const [showValidation, setShowValidation] = useState(false)
   const [showModeModal, setShowModeModal] = useState(false)
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [tempSettings, setTempSettings] = useState(initialSettings)
 
-  // فقط سه مد مورد نظر
+  //   مد مورد نظر
   const ventilatorModes = {
     SIMV: {
       name: 'SIMV - تهویه متناوب اجباری هماهنگ',
       description: 'ترکیب تنفس اجباری و خودبخودی',
-      settings: {
-        tidalVolume: (weight * 6).toFixed(1),
-        respiratoryRate: 10,
-        fio2: 40,
-        peep: 5,
-        ieRatio: '1:2',
-        pressureSupport: 10
-      }
+      parameters: [
+        { key: 'tidalVolume', label: 'حجم جاری', unit: 'ml', min: weight * 4, max: weight * 10, step: 0.1 },
+        { key: 'respiratoryRate', label: 'میزان تنفس', unit: '/min', min: 8, max: 35, step: 1 },
+        { key: 'fio2', label: 'FiO₂', unit: '%', min: 21, max: 100, step: 1 },
+        { key: 'peep', label: 'PEEP', unit: 'cmH₂O', min: 3, max: 15, step: 0.5 },
+        { key: 'ieRatio', label: 'نسبت I:E', type: 'select', options: ['1:1', '1:1.5', '1:2', '1:2.5', '1:3'] },
+        { key: 'pressureSupport', label: 'حمایت فشاری', unit: 'cmH₂O', min: 5, max: 25, step: 1 }
+      ]
     },
     CPAP: {
       name: 'CPAP - فشار مثبت مداوم راه هوایی',
       description: 'فشار مثبت مداوم در تمام چرخه تنفسی',
-      settings: {
-        cpap: 8,
-        fio2: 40,
-        pressureSupport: 5
-      }
+      parameters: [
+        { key: 'cpap', label: 'سطح CPAP', unit: 'cmH₂O', min: 3, max: 15, step: 0.5 },
+        { key: 'fio2', label: 'FiO₂', unit: '%', min: 21, max: 100, step: 1 },
+        { key: 'pressureSupport', label: 'حمایت فشاری', unit: 'cmH₂O', min: 5, max: 25, step: 1 }
+      ]
     },
     PRVC: {
       name: 'PRVC - حجم جاری تنظیم‌شده با فشار',
       description: 'ترکیب مزایای VCV و PCV',
-      settings: {
-        tidalVolume: (weight * 6).toFixed(1),
-        respiratoryRate: 12,
-        fio2: 40,
-        peep: 5,
-        ieRatio: '1:2'
-      }
+      parameters: [
+        { key: 'tidalVolume', label: 'حجم جاری', unit: 'ml', min: weight * 4, max: weight * 10, step: 0.1 },
+        { key: 'respiratoryRate', label: 'میزان تنفس', unit: '/min', min: 8, max: 35, step: 1 },
+        { key: 'fio2', label: 'FiO₂', unit: '%', min: 21, max: 100, step: 1 },
+        { key: 'peep', label: 'PEEP', unit: 'cmH₂O', min: 3, max: 15, step: 0.5 },
+        { key: 'ieRatio', label: 'نسبت I:E', type: 'select', options: ['1:1', '1:1.5', '1:2', '1:2.5', '1:3'] }
+      ]
     }
   }
 
@@ -291,7 +295,7 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
       ...modeSettings,
       mode: mode
     }))
-    setShowModeModal(false) // بستن مودال بعد از انتخاب
+    setShowModeModal(false)
   }
 
   const openModeModal = () => {
@@ -300,6 +304,27 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
 
   const closeModeModal = () => {
     setShowModeModal(false)
+  }
+
+  const openSettingsModal = () => {
+    setTempSettings(currentSettings)
+    setShowSettingsModal(true)
+  }
+
+  const closeSettingsModal = () => {
+    setShowSettingsModal(false)
+  }
+
+  const saveSettings = () => {
+    setCurrentSettings(tempSettings)
+    setShowSettingsModal(false)
+  }
+
+  const handleSettingChange = (key, value) => {
+    setTempSettings(prev => ({
+      ...prev,
+      [key]: value
+    }))
   }
 
   // رندر تنظیمات بر اساس مد انتخاب شده برای کودکان
@@ -466,6 +491,112 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
     )
   }
 
+  // مودال ویرایش تنظیمات
+  const SettingsModal = () => {
+    if (!showSettingsModal) return null
+
+    const currentMode = ventilatorModes[selectedMode]
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+          {/* هدر مودال */}
+          <div className="bg-teal-600 text-white p-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">ویرایش تنظیمات - {currentMode.name}</h2>
+              <button
+                onClick={closeSettingsModal}
+                className="text-white hover:text-teal-200 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <p className="text-teal-100 mt-2">
+              پارامترهای مد {currentMode.name} را تنظیم کنید
+            </p>
+          </div>
+
+          {/* محتوای مودال */}
+          <div className="p-6 max-h-[60vh] overflow-y-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {currentMode.parameters.map((param) => (
+                <div key={param.key} className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    {param.label}
+                    {param.unit && <span className="text-gray-500"> ({param.unit})</span>}
+                  </label>
+                  
+                  {param.type === 'select' ? (
+                    <select
+                      value={tempSettings[param.key]}
+                      onChange={(e) => handleSettingChange(param.key, e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-left"
+                    >
+                      {param.options.map(option => (
+                        <option key={option} value={option}>{option}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="space-y-2">
+                      <input
+                        type="number"
+                        value={tempSettings[param.key]}
+                        onChange={(e) => handleSettingChange(param.key, e.target.value)}
+                        min={param.min}
+                        max={param.max}
+                        step={param.step}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-left"
+                      />
+                      <input
+                        type="range"
+                        value={tempSettings[param.key]}
+                        onChange={(e) => handleSettingChange(param.key, e.target.value)}
+                        min={param.min}
+                        max={param.max}
+                        step={param.step}
+                        className="w-full"
+                      />
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>حداقل: {param.min}</span>
+                        <span>حداکثر: {param.max}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* فوتر مودال */}
+          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={closeSettingsModal}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                لغو
+              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setTempSettings(initialSettings)}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  بازنشانی
+                </button>
+                <button
+                  onClick={saveSettings}
+                  className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+                >
+                  ذخیره تنظیمات
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 to-green-100 py-8 px-4">
       <div className="max-w-7xl mx-auto">
@@ -539,13 +670,15 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
               {/* دکمه جداگانه برای باز کردن مودال */}
               <button
                 onClick={openModeModal}
-                className="w-full bg-teal-600 hover:bg-teal-700 text-white py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2"
+                className="w-full bg-teal-600 hover:bg-teal-700 text-white py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 mb-3"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
                 انتخاب مد ونتیلاتور
               </button>
+
+             
             </div>
 
             {/* اطلاعات مد انتخاب شده */}
@@ -584,9 +717,15 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
               <div className="bg-gray-900 rounded-2xl shadow-lg p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-white">مانیتور ونتیلاتور - کودکان</h2>
-                  <div className="bg-teal-600 text-white px-3 py-1 rounded-full text-sm">
-                    {ventilatorModes[selectedMode]?.name}
-                  </div>
+                  <button
+                    onClick={openSettingsModal}
+                    className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    {currentSettings.mode}
+                  </button>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
@@ -783,6 +922,9 @@ export default function PediatricVentilator({ weight, age, ageUnit, disease, onB
 
       {/* مودال انتخاب مد */}
       <ModeSelectionModal />
+
+      {/* مودال ویرایش تنظیمات */}
+      <SettingsModal />
     </div>
   )
 }
