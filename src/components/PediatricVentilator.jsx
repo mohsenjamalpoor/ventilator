@@ -19,7 +19,7 @@ export default function PediatricVentilator({
     pressureSupport: 10,
     cpap: 8,
     pip: 18, // فشار دمی پیک
-    platPressure: 16, // فشار فلات
+  
   };
 
   // محاسبه تهویه دقیقه‌ای
@@ -876,9 +876,7 @@ export default function PediatricVentilator({
                   {/* بخش مانیتور سمت چپ */}
                   <div className="lg:col-span-1">
                     <div className="bg-gray-900 rounded-xl p-4 h-full">
-                      <h3 className="text-white font-bold mb-3 text-center">
-                        مانیتور
-                      </h3>
+                     
                       <div className="space-y-3">
                         {/* PIP */}
                         <div className="bg-indigo-900 rounded-lg p-2 border border-indigo-600">
@@ -903,6 +901,16 @@ export default function PediatricVentilator({
                               {currentSettings.fio2}%
                             </p>
                             <p className="text-purple-400 text-xs">%</p>
+                          </div>
+                        </div>
+                          {/* PEEP */}
+                        <div className="bg-red-900 rounded-lg p-2 border border-red-600">
+                          <div className="text-center">
+                            <h3 className="text-red-300 text-xs mb-1">PEEP</h3>
+                            <p className="text-lg font-bold text-white">
+                              {currentSettings.peep}
+                            </p>
+                            <p className="text-red-400 text-xs">cmH₂O</p>
                           </div>
                         </div>
 
@@ -941,29 +949,9 @@ export default function PediatricVentilator({
                           </div>
                         </div>
 
-                        {/* Plat Pressure */}
-                        <div className="bg-yellow-900 rounded-lg p-2 border border-yellow-600">
-                          <div className="text-center">
-                            <h3 className="text-yellow-300 text-xs mb-1">
-                              Plat
-                            </h3>
-                            <p className="text-lg font-bold text-white">
-                              {currentSettings.platPressure}
-                            </p>
-                            <p className="text-yellow-400 text-xs">cmH₂O</p>
-                          </div>
-                        </div>
+                     
 
-                        {/* PEEP */}
-                        <div className="bg-red-900 rounded-lg p-2 border border-red-600">
-                          <div className="text-center">
-                            <h3 className="text-red-300 text-xs mb-1">PEEP</h3>
-                            <p className="text-lg font-bold text-white">
-                              {currentSettings.peep}
-                            </p>
-                            <p className="text-red-400 text-xs">cmH₂O</p>
-                          </div>
-                        </div>
+                      
                       </div>
                     </div>
                   </div>
@@ -984,56 +972,103 @@ export default function PediatricVentilator({
                 </div>
 
                 {/* بخش تنظیمات در پایین صفحه */}
+
                 <div className="mt-6">
                   <div className="bg-gray-700 rounded-xl p-4">
                     <h3 className="text-white font-bold mb-3 text-center">
                       تنظیمات ونتیلاتور
                     </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {/* TV */}
-                      <div className="bg-blue-900 rounded-lg p-3 border-2 border-blue-500">
-                        <div className="text-center">
-                          <h3 className="text-blue-300 text-xs mb-1">TV</h3>
-                          <p className="text-xl font-bold text-white mb-1">
-                            {currentSettings.tidalVolume}
-                          </p>
-                          <p className="text-blue-400 text-xs">ml</p>
-                        </div>
-                      </div>
 
-                      {/* RR */}
-                      <div className="bg-green-900 rounded-lg p-3 border-2 border-green-500">
-                        <div className="text-center">
-                          <h3 className="text-green-300 text-xs mb-1">RR</h3>
-                          <p className="text-xl font-bold text-white mb-1">
-                            {currentSettings.respiratoryRate}
-                          </p>
-                          <p className="text-green-400 text-xs">/min</p>
+                    {/* برای مد CPAP */}
+                    {selectedMode === "CPAP" ? (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {/* Pressure Support */}
+                        <div className="bg-indigo-900 rounded-lg p-3 border-2 border-indigo-500">
+                          <div className="text-center">
+                            <h3 className="text-indigo-300 text-xs mb-1">
+                              Pressure Support
+                            </h3>
+                            <p className="text-xl font-bold text-white mb-1">
+                              {currentSettings.pressureSupport}
+                            </p>
+                            <p className="text-indigo-400 text-xs">cmH₂O</p>
+                          </div>
                         </div>
-                      </div>
 
-
-                      {/* PEEP */}
-                      <div className="bg-red-900 rounded-lg p-3 border-2 border-red-500">
-                        <div className="text-center">
-                          <h3 className="text-red-300 text-xs mb-1">PEEP</h3>
-                          <p className="text-xl font-bold text-white mb-1">
-                            {currentSettings.peep}
-                          </p>
-                          <p className="text-red-400 text-xs">cmH₂O</p>
+                        {/* PEEP */}
+                        <div className="bg-red-900 rounded-lg p-3 border-2 border-red-500">
+                          <div className="text-center">
+                            <h3 className="text-red-300 text-xs mb-1">PEEP</h3>
+                            <p className="text-xl font-bold text-white mb-1">
+                              {currentSettings.peep}
+                            </p>
+                            <p className="text-red-400 text-xs">cmH₂O</p>
+                          </div>
                         </div>
-                      </div>
+
                         {/* FiO2 */}
-                      <div className="bg-purple-900 rounded-lg p-3 border-2 border-purple-500">
-                        <div className="text-center">
-                          <h3 className="text-purple-300 text-xs mb-1">FiO₂</h3>
-                          <p className="text-xl font-bold text-white mb-1">
-                            {currentSettings.fio2}%
-                          </p>
-                          <p className="text-purple-400 text-xs">%</p>
+                        <div className="bg-purple-900 rounded-lg p-3 border-2 border-purple-500">
+                          <div className="text-center">
+                            <h3 className="text-purple-300 text-xs mb-1">
+                              FiO₂
+                            </h3>
+                            <p className="text-xl font-bold text-white mb-1">
+                              {currentSettings.fio2}%
+                            </p>
+                            <p className="text-purple-400 text-xs">%</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    ) : (
+                      /* برای مدهای SIMV و PRVC */
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {/* TV */}
+                        <div className="bg-blue-900 rounded-lg p-3 border-2 border-blue-500">
+                          <div className="text-center">
+                            <h3 className="text-blue-300 text-xs mb-1">TV</h3>
+                            <p className="text-xl font-bold text-white mb-1">
+                              {currentSettings.tidalVolume}
+                            </p>
+                            <p className="text-blue-400 text-xs">ml</p>
+                          </div>
+                        </div>
+
+                        {/* RR */}
+                        <div className="bg-green-900 rounded-lg p-3 border-2 border-green-500">
+                          <div className="text-center">
+                            <h3 className="text-green-300 text-xs mb-1">RR</h3>
+                            <p className="text-xl font-bold text-white mb-1">
+                              {currentSettings.respiratoryRate}
+                            </p>
+                            <p className="text-green-400 text-xs">/min</p>
+                          </div>
+                        </div>
+
+                        {/* PEEP */}
+                        <div className="bg-red-900 rounded-lg p-3 border-2 border-red-500">
+                          <div className="text-center">
+                            <h3 className="text-red-300 text-xs mb-1">PEEP</h3>
+                            <p className="text-xl font-bold text-white mb-1">
+                              {currentSettings.peep}
+                            </p>
+                            <p className="text-red-400 text-xs">cmH₂O</p>
+                          </div>
+                        </div>
+
+                        {/* FiO2 */}
+                        <div className="bg-purple-900 rounded-lg p-3 border-2 border-purple-500">
+                          <div className="text-center">
+                            <h3 className="text-purple-300 text-xs mb-1">
+                              FiO₂
+                            </h3>
+                            <p className="text-xl font-bold text-white mb-1">
+                              {currentSettings.fio2}%
+                            </p>
+                            <p className="text-purple-400 text-xs">%</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
