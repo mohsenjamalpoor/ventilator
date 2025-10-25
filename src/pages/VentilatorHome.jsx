@@ -155,6 +155,7 @@ export default function VentilatorHome() {
               <option value="Pneumonia">پنومونی</option>
               <option value="COPD">بیماری انسدادی مزمن ریوی (COPD)</option>
               <option value="RDS">سندرم زجر تنفسی نوزادان (RDS)</option>
+              <option value="LOC">کاهش سطح هوشیاری</option>
               <option value="Other">سایر بیماری‌ها</option>
             </select>
             {errors.disease && (

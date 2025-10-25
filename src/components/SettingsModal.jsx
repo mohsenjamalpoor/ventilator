@@ -3,17 +3,17 @@ import React from "react";
 const SettingsModal = ({
   show,
   onClose,
-  ventilatorModes,
-  selectedMode,
-  tempSettings,
-  onSettingChange,
   onSave,
   onReset,
+  tempSettings,
+  onSettingChange,
+  selectedMode,
+  modes,
   weight,
 }) => {
   if (!show) return null;
 
-  const currentMode = ventilatorModes[selectedMode];
+  const currentMode = modes[selectedMode];
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

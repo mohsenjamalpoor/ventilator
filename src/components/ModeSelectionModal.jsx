@@ -3,7 +3,7 @@ import React from "react";
 const ModeSelectionModal = ({
   show,
   onClose,
-  ventilatorModes,
+  modes,
   selectedMode,
   onModeChange,
 }) => {
@@ -31,7 +31,7 @@ const ModeSelectionModal = ({
         {/* محتوای مودال */}
         <div className="p-6 max-h-[60vh] overflow-y-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {Object.entries(ventilatorModes).map(([key, mode]) => (
+            {Object.entries(modes).map(([key, mode]) => (
               <button
                 key={key}
                 onClick={() => onModeChange(key)}
@@ -50,6 +50,7 @@ const ModeSelectionModal = ({
                   </div>
                 </div>
 
+                {/* اطلاعات تکمیلی هر مد */}
                 <div className="mt-3 text-xs text-gray-500 text-right">
                   {key === "SIMV" && "مناسب برای weaning از ونتیلاتور"}
                   {key === "CPAP" && "مناسب برای بیماران با تنفس خودبخودی"}
@@ -66,7 +67,7 @@ const ModeSelectionModal = ({
             <div className="text-gray-600">
               مد فعلی:{" "}
               <span className="font-bold text-teal-600">
-                {ventilatorModes[selectedMode]?.name}
+                {modes[selectedMode]?.name}
               </span>
             </div>
             <button
