@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import ModeSelectionModal from "./ModeSelectionModal";
 import SettingsModal from "./SettingsModal";
+import { PiBellLight } from "react-icons/pi";
 
 export default function PediatricVentilator({
   weight,
@@ -51,6 +52,7 @@ export default function PediatricVentilator({
   const [showValidation, setShowValidation] = useState(false);
   const [showModeModal, setShowModeModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showAlarmModal, setShowAlarmModal] = useState(false); // حالت جدید برای مودال هشدار
   const [tempSettings, setTempSettings] = useState({
     ...initialSettings,
     mvent: calculateMvent(
@@ -60,6 +62,36 @@ export default function PediatricVentilator({
     vti: initialSettings.tidalVolume,
     vte: (weight * 5.8).toFixed(1),
   });
+
+  // محاسبه محدوده‌های هشدار
+  const calculateAlarmRanges = () => {
+    const currentRR = parseFloat(currentSettings.respiratoryRate);
+    const currentMvent = parseFloat(currentSettings.mvent);
+    const currentPeep = parseFloat(currentSettings.peep);
+
+    return {
+      rr: {
+        low: (currentRR / 2).toFixed(1),
+        high: (currentRR * 2).toFixed(1),
+        current: currentRR,
+        unit: "/min"
+      },
+      mvent: {
+        low: (currentMvent / 2).toFixed(2),
+        high: (currentMvent * 2).toFixed(2),
+        current: currentMvent,
+        unit: "L/min"
+      },
+      peep: {
+        low: Math.max(0, currentPeep - 2).toFixed(1),
+        high: (currentPeep + 2).toFixed(1),
+        current: currentPeep,
+        unit: "cmH₂O"
+      }
+    };
+  };
+
+  const [alarmRanges, setAlarmRanges] = useState(calculateAlarmRanges());
 
   // مد مورد نظر
   const ventilatorModes = {
@@ -79,8 +111,8 @@ export default function PediatricVentilator({
           key: "respiratoryRate",
           label: "میزان تنفس",
           unit: "/min",
-          min: 8,
-          max: 35,
+          min: 1,
+          max: 60,
           step: 1,
         },
         { key: "fio2", label: "FiO₂", unit: "%", min: 21, max: 100, step: 1 },
@@ -88,9 +120,9 @@ export default function PediatricVentilator({
           key: "peep",
           label: "PEEP",
           unit: "cmH₂O",
-          min: 3,
-          max: 15,
-          step: 0.5,
+          min: 0,
+          max: 50,
+          step: 1,
         },
         {
           key: "ieRatio",
@@ -381,6 +413,8 @@ export default function PediatricVentilator({
 
     setAbgInterpretation(detailedInterpretation);
     setCurrentSettings(newSettings);
+    // به‌روزرسانی محدوده‌های هشدار
+    setAlarmRanges(calculateAlarmRanges());
   };
 
   const handleAbgChange = (field, value) => {
@@ -413,6 +447,8 @@ export default function PediatricVentilator({
     setSelectedMode("SIMV");
     setAbgErrors({});
     setShowValidation(false);
+    // به‌روزرسانی محدوده‌های هشدار
+    setAlarmRanges(calculateAlarmRanges());
   };
 
   const handleModeChange = (mode) => {
@@ -427,6 +463,8 @@ export default function PediatricVentilator({
     };
     setCurrentSettings(newSettings);
     setShowModeModal(false);
+    // به‌روزرسانی محدوده‌های هشدار
+    setAlarmRanges(calculateAlarmRanges());
   };
 
   const openModeModal = () => {
@@ -446,6 +484,16 @@ export default function PediatricVentilator({
     setShowSettingsModal(false);
   };
 
+  // توابع جدید برای مدیریت مودال هشدار
+  const openAlarmModal = () => {
+    setAlarmRanges(calculateAlarmRanges());
+    setShowAlarmModal(true);
+  };
+
+  const closeAlarmModal = () => {
+    setShowAlarmModal(false);
+  };
+
   const saveSettings = () => {
     // محاسبه مجدد MVent هنگام ذخیره تنظیمات
     const updatedSettings = {
@@ -458,6 +506,8 @@ export default function PediatricVentilator({
     };
     setCurrentSettings(updatedSettings);
     setShowSettingsModal(false);
+    // به‌روزرسانی محدوده‌های هشدار
+    setAlarmRanges(calculateAlarmRanges());
   };
 
   const handleSettingChange = (key, value) => {
@@ -514,6 +564,122 @@ export default function PediatricVentilator({
     return (
       <div className={`text-xs mt-1 ${color}`}>
         {status} (نرمال: {normalMin}-{normalMax} {unit})
+      </div>
+    );
+  };
+
+  // کامپوننت مودال هشدار
+  const AlarmModal = ({ show, onClose, alarmRanges }) => {
+    if (!show) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4">
+          {/* هدر مودال */}
+          <div className="bg-red-600 text-white rounded-t-2xl p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                
+                <h2 className="text-xl font-bold">Alaram Profile</h2>
+              </div>
+              <button
+                onClick={onClose}
+                className="text-white hover:text-gray-200 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* بدنه مودال */}
+          <div className="p-6">
+         
+
+            {/* نمایش محدوده‌های هشدار */}
+            <div className="space-y-4">
+              {/* هشدار RR */}
+              <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                <h3 className="font-bold text-orange-800 mb-2 flex items-center gap-2">
+                  
+                 Respiratory Rate (RR)
+                </h3>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-red-100 rounded-lg p-2">
+                    <p className="text-xs text-red-600">پایین</p>
+                    <p className="font-bold text-red-800">{alarmRanges.rr.low}</p>
+                  </div>
+                  <div className="bg-green-100 rounded-lg p-2">
+                    <p className="text-xs text-green-600">فعلی</p>
+                    <p className="font-bold text-green-800">{alarmRanges.rr.current}</p>
+                  </div>
+                  <div className="bg-yellow-100 rounded-lg p-2">
+                    <p className="text-xs text-yellow-600">بالا</p>
+                    <p className="font-bold text-yellow-800">{alarmRanges.rr.high}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-orange-600 mt-2 text-center">
+                  واحد: {alarmRanges.rr.unit}
+                </p>
+              </div>
+
+              {/* هشدار MVent */}
+              <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
+                <h3 className="font-bold text-teal-800 mb-2 flex items-center gap-2">
+                
+                  تهویه دقیقه‌ای (MVent)
+                </h3>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-red-100 rounded-lg p-2">
+                    <p className="text-xs text-red-600">پایین</p>
+                    <p className="font-bold text-red-800">{alarmRanges.mvent.low}</p>
+                  </div>
+                  <div className="bg-green-100 rounded-lg p-2">
+                    <p className="text-xs text-green-600">فعلی</p>
+                    <p className="font-bold text-green-800">{alarmRanges.mvent.current}</p>
+                  </div>
+                  <div className="bg-yellow-100 rounded-lg p-2">
+                    <p className="text-xs text-yellow-600">بالا</p>
+                    <p className="font-bold text-yellow-800">{alarmRanges.mvent.high}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-teal-600 mt-2 text-center">
+                  واحد: {alarmRanges.mvent.unit}
+                </p>
+              </div>
+
+              {/* هشدار PEEP */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <h3 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
+                
+                  PEEP
+                </h3>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-red-100 rounded-lg p-2">
+                    <p className="text-xs text-red-600">پایین</p>
+                    <p className="font-bold text-red-800">{alarmRanges.peep.low}</p>
+                  </div>
+                  <div className="bg-green-100 rounded-lg p-2">
+                    <p className="text-xs text-green-600">فعلی</p>
+                    <p className="font-bold text-green-800">{alarmRanges.peep.current}</p>
+                  </div>
+                  <div className="bg-yellow-100 rounded-lg p-2">
+                    <p className="text-xs text-yellow-600">بالا</p>
+                    <p className="font-bold text-yellow-800">{alarmRanges.peep.high}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-blue-600 mt-2 text-center">
+                  واحد: {alarmRanges.peep.unit}
+                </p>
+              </div>
+            </div>
+
+          
+          </div>
+
+       
+        </div>
       </div>
     );
   };
@@ -656,25 +822,33 @@ export default function PediatricVentilator({
                   <h2 className="text-xl font-bold text-white">
                     مانیتور ونتیلاتور - کودکان
                   </h2>
-                  <button
-                    onClick={openSettingsModal}
-                    className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-                  >
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={openAlarmModal}
+                      className="text-white hover:text-yellow-200 transition-colors p-2 rounded-lg hover:bg-gray-700"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                      />
-                    </svg>
-                    {currentSettings.mode}
-                  </button>
+                      <PiBellLight className="w-8 h-8 bg-teal-600 hover:bg-teal-700 rounded-lg " />
+                    </button>
+                    <button
+                      onClick={openSettingsModal}
+                      className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        />
+                      </svg>
+                      {currentSettings.mode}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
@@ -1098,6 +1272,13 @@ export default function PediatricVentilator({
         selectedMode={selectedMode}
         modes={ventilatorModes}
         weight={weight}
+      />
+
+      {/* مودال هشدار جدید */}
+      <AlarmModal
+        show={showAlarmModal}
+        onClose={closeAlarmModal}
+        alarmRanges={alarmRanges}
       />
     </div>
   );
