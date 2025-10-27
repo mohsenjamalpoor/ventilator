@@ -21,7 +21,9 @@ export default function PediatricVentilator({
     mode: "SIMV",
     pressureSupport: 10,
     cpap: 8,
-    pip: 18, // فشار دمی پیک
+    pip: 18,
+    ti: 1.0,
+    trigger: -2,
   };
 
   // محاسبه تهویه دقیقه‌ای
@@ -52,16 +54,8 @@ export default function PediatricVentilator({
   const [showValidation, setShowValidation] = useState(false);
   const [showModeModal, setShowModeModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showAlarmModal, setShowAlarmModal] = useState(false); // حالت جدید برای مودال هشدار
-  const [tempSettings, setTempSettings] = useState({
-    ...initialSettings,
-    mvent: calculateMvent(
-      initialSettings.tidalVolume,
-      initialSettings.respiratoryRate
-    ),
-    vti: initialSettings.tidalVolume,
-    vte: (weight * 5.8).toFixed(1),
-  });
+  const [showAlarmModal, setShowAlarmModal] = useState(false);
+  const [tempSettings, setTempSettings] = useState({ ...initialSettings });
 
   // محاسبه محدوده‌های هشدار
   const calculateAlarmRanges = () => {
@@ -96,8 +90,8 @@ export default function PediatricVentilator({
   // مد مورد نظر
   const ventilatorModes = {
     SIMV: {
-      name: "SIMV - تهویه متناوب اجباری هماهنگ",
-      description: "ترکیب تنفس اجباری و خودبخودی",
+      name: "SIMV",
+      description: "تهویه متناوب اجباری هماهنگ",
       parameters: [
         {
           key: "tidalVolume",
@@ -105,7 +99,7 @@ export default function PediatricVentilator({
           unit: "ml",
           min: weight * 4,
           max: weight * 10,
-          step: 0.1,
+          step: 1,
         },
         {
           key: "respiratoryRate",
@@ -138,11 +132,43 @@ export default function PediatricVentilator({
           max: 25,
           step: 1,
         },
+        {
+          key: "flowRate",
+          label: "Flow Rate",
+          unit: "L/min",
+          min: 10,
+          max: 100,
+          step: 5,
+        },
+        {
+          key: "ti",
+          label: "Ti",
+          unit: "sec",
+          min: 0.5,
+          max: 3.0,
+          step: 0.1,
+        },
+        {
+          key: "trigger",
+          label: "Trigger",
+          unit: "cmH₂O",
+          min: -5,
+          max: 5,
+          step: 0.5,
+        },
+        {
+          key: "pip",
+          label: "PIP",
+          unit: "cmH₂O",
+          min: 10,
+          max: 50,
+          step: 1,
+        },
       ],
     },
     CPAP: {
-      name: "CPAP - فشار مثبت مداوم راه هوایی",
-      description: "فشار مثبت مداوم در تمام چرخه تنفسی",
+      name: "CPAP",
+      description: "فشار مثبت مداوم راه هوایی",
       parameters: [
         {
           key: "cpap",
@@ -164,8 +190,8 @@ export default function PediatricVentilator({
       ],
     },
     PRVC: {
-      name: "PRVC - حجم جاری تنظیم‌شده با فشار",
-      description: "ترکیب مزایای VCV و PCV",
+      name: "PRVC",
+      description: "حجم جاری تنظیم‌شده با فشار",
       parameters: [
         {
           key: "tidalVolume",
@@ -198,6 +224,22 @@ export default function PediatricVentilator({
           type: "select",
           options: ["1:1", "1:1.5", "1:2", "1:2.5", "1:3"],
         },
+        {
+          key: "pip",
+          label: "PIP",
+          unit: "cmH₂O",
+          min: 10,
+          max: 50,
+          step: 1,
+        },
+        {
+          key: "ti",
+          label: "Ti",
+          unit: "sec",
+          min: 0.5,
+          max: 3.0,
+          step: 0.1,
+        },
       ],
     },
   };
@@ -208,7 +250,6 @@ export default function PediatricVentilator({
     const errors = {};
     let isValid = true;
 
-    // اعتبارسنجی pH
     if (!pH) {
       errors.pH = "مقدار pH الزامی است";
       isValid = false;
@@ -222,7 +263,6 @@ export default function PediatricVentilator({
       }
     }
 
-    // اعتبارسنجی pCO2
     if (!pCO2) {
       errors.pCO2 = "مقدار pCO2 الزامی است";
       isValid = false;
@@ -236,7 +276,6 @@ export default function PediatricVentilator({
       }
     }
 
-    // اعتبارسنجی pO2
     if (!pO2) {
       errors.pO2 = "مقدار pO2 الزامی است";
       isValid = false;
@@ -250,7 +289,6 @@ export default function PediatricVentilator({
       }
     }
 
-    // اعتبارسنجی HCO3
     if (!HCO3) {
       errors.HCO3 = "مقدار HCO3 الزامی است";
       isValid = false;
@@ -286,12 +324,9 @@ export default function PediatricVentilator({
     let compensation = "";
     let newSettings = { ...currentSettings };
 
-    // تشخیص نوع اختلال اسید-باز
     if (pHNum < 7.35) {
-      // اسیدوز
       if (pCO2Num > 45) {
         interpretation = "اسیدوز تنفسی";
-        // محاسبه جبران متابولیک مورد انتظار
         const expectedHCO3 = 24 + ((pCO2Num - 40) / 10) * 2.5;
         if (HCO3Num > expectedHCO3 + 2) {
           compensation = "جبران نشده";
@@ -301,7 +336,6 @@ export default function PediatricVentilator({
           compensation = "جبران مزمن";
         }
 
-        // تنظیمات برای اسیدوز تنفسی
         newSettings.respiratoryRate = Math.min(
           20,
           currentSettings.respiratoryRate + 2
@@ -311,7 +345,6 @@ export default function PediatricVentilator({
         }
       } else if (HCO3Num < 22) {
         interpretation = "اسیدوز متابولیک";
-        // محاسبه جبران تنفسی مورد انتظار
         const expectedPCO2 = 1.5 * HCO3Num + 8;
         if (pCO2Num > expectedPCO2 + 2) {
           compensation = "اسیدوز تنفسی همراه";
@@ -322,10 +355,8 @@ export default function PediatricVentilator({
         }
       }
     } else if (pHNum > 7.45) {
-      // آلکالوز
       if (pCO2Num < 35) {
         interpretation = "آلکالوز تنفسی";
-        // محاسبه جبران متابولیک مورد انتظار
         const expectedHCO3 = 24 - ((40 - pCO2Num) / 10) * 5;
         if (HCO3Num < expectedHCO3 - 2) {
           compensation = "جبران نشده";
@@ -335,7 +366,6 @@ export default function PediatricVentilator({
           compensation = "جبران مزمن";
         }
 
-        // تنظیمات برای آلکالوز تنفسی
         newSettings.respiratoryRate = Math.max(
           8,
           currentSettings.respiratoryRate - 2
@@ -345,7 +375,6 @@ export default function PediatricVentilator({
         }
       } else if (HCO3Num > 26) {
         interpretation = "آلکالوز متابولیک";
-        // محاسبه جبران تنفسی مورد انتظار
         const expectedPCO2 = 0.7 * HCO3Num + 20;
         if (pCO2Num > expectedPCO2 + 2) {
           compensation = "اسیدوز تنفسی همراه";
@@ -360,7 +389,6 @@ export default function PediatricVentilator({
       compensation = "تعادل اسید-باز نرمال";
     }
 
-    // تشخیص اختلالات مختلط
     if (pHNum >= 7.35 && pHNum <= 7.45) {
       if (pCO2Num > 45 && HCO3Num > 26) {
         interpretation =
@@ -371,7 +399,6 @@ export default function PediatricVentilator({
       }
     }
 
-    // بررسی هیپوکسمی برای کودکان
     let oxygenationStatus = "";
     if (pO2Num < 60) {
       oxygenationStatus = "هیپوکسمی شدید";
@@ -385,7 +412,6 @@ export default function PediatricVentilator({
       oxygenationStatus = "اکسیژناسیون نرمال";
     }
 
-    // محاسبه Anion Gap برای اسیدوز متابولیک
     let anionGapInfo = "";
     if (interpretation.includes("اسیدوز متابولیک")) {
       const anionGap = 140 - 104 - HCO3Num;
@@ -404,7 +430,6 @@ export default function PediatricVentilator({
       detailedInterpretation += ` - ${oxygenationStatus}`;
     }
 
-    // محاسبه مجدد MVent با تنظیمات جدید
     newSettings.mvent = calculateMvent(
       newSettings.tidalVolume,
       newSettings.respiratoryRate
@@ -413,7 +438,6 @@ export default function PediatricVentilator({
 
     setAbgInterpretation(detailedInterpretation);
     setCurrentSettings(newSettings);
-    // به‌روزرسانی محدوده‌های هشدار
     setAlarmRanges(calculateAlarmRanges());
   };
 
@@ -422,7 +446,6 @@ export default function PediatricVentilator({
       ...prev,
       [field]: value,
     }));
-    // پاک کردن خطا هنگام تایپ
     if (abgErrors[field]) {
       setAbgErrors((prev) => ({
         ...prev,
@@ -447,7 +470,6 @@ export default function PediatricVentilator({
     setSelectedMode("SIMV");
     setAbgErrors({});
     setShowValidation(false);
-    // به‌روزرسانی محدوده‌های هشدار
     setAlarmRanges(calculateAlarmRanges());
   };
 
@@ -463,7 +485,6 @@ export default function PediatricVentilator({
     };
     setCurrentSettings(newSettings);
     setShowModeModal(false);
-    // به‌روزرسانی محدوده‌های هشدار
     setAlarmRanges(calculateAlarmRanges());
   };
 
@@ -476,7 +497,28 @@ export default function PediatricVentilator({
   };
 
   const openSettingsModal = () => {
-    setTempSettings(currentSettings);
+    // ایجاد تنظیمات موقت با تمام پارامترهای مورد نیاز
+    const defaultTempSettings = {
+      tidalVolume: 500,
+      respiratoryRate: 12,
+      peep: 5,
+      ti: 1.0,
+      ieRatio: "1:2",
+      fio2: 40,
+      trigger: -2,
+      flowRate: 40,
+      pressureSupport: 10,
+      pip: 18,
+      cpap: 8,
+    };
+
+    // ترکیب تنظیمات فعلی با مقادیر پیش‌فرض
+    const newTempSettings = {
+      ...defaultTempSettings,
+      ...currentSettings
+    };
+
+    setTempSettings(newTempSettings);
     setShowSettingsModal(true);
   };
 
@@ -484,7 +526,6 @@ export default function PediatricVentilator({
     setShowSettingsModal(false);
   };
 
-  // توابع جدید برای مدیریت مودال هشدار
   const openAlarmModal = () => {
     setAlarmRanges(calculateAlarmRanges());
     setShowAlarmModal(true);
@@ -495,7 +536,6 @@ export default function PediatricVentilator({
   };
 
   const saveSettings = () => {
-    // محاسبه مجدد MVent هنگام ذخیره تنظیمات
     const updatedSettings = {
       ...tempSettings,
       mvent: calculateMvent(
@@ -506,7 +546,6 @@ export default function PediatricVentilator({
     };
     setCurrentSettings(updatedSettings);
     setShowSettingsModal(false);
-    // به‌روزرسانی محدوده‌های هشدار
     setAlarmRanges(calculateAlarmRanges());
   };
 
@@ -516,7 +555,6 @@ export default function PediatricVentilator({
       [key]: value,
     };
 
-    // اگر TV یا RR تغییر کرد، MVent را مجدد محاسبه کن
     if (key === "tidalVolume" || key === "respiratoryRate") {
       newTempSettings.mvent = calculateMvent(
         key === "tidalVolume" ? value : newTempSettings.tidalVolume,
@@ -531,13 +569,23 @@ export default function PediatricVentilator({
   };
 
   const resetTempSettings = () => {
+    const defaults = {
+      tidalVolume: 500,
+      respiratoryRate: 12,
+      peep: 5,
+      ti: 1.0,
+      ieRatio: "1:2",
+      fio2: 40,
+      trigger: -2,
+      flowRate: 40,
+      pressureSupport: 10,
+      pip: 18,
+      cpap: 8,
+    };
     setTempSettings({
-      ...initialSettings,
-      mvent: calculateMvent(
-        initialSettings.tidalVolume,
-        initialSettings.respiratoryRate
-      ),
-      vti: initialSettings.tidalVolume,
+      ...defaults,
+      mvent: calculateMvent(500, 12),
+      vti: 500,
       vte: (weight * 5.8).toFixed(1),
     });
   };
@@ -575,12 +623,10 @@ export default function PediatricVentilator({
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4">
-          {/* هدر مودال */}
           <div className="bg-red-600 text-white rounded-t-2xl p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                
-                <h2 className="text-xl font-bold">Alaram Profile</h2>
+                <h2 className="text-xl font-bold">Alarm Profile</h2>
               </div>
               <button
                 onClick={onClose}
@@ -593,17 +639,11 @@ export default function PediatricVentilator({
             </div>
           </div>
 
-          {/* بدنه مودال */}
           <div className="p-6">
-         
-
-            {/* نمایش محدوده‌های هشدار */}
             <div className="space-y-4">
-              {/* هشدار RR */}
               <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
                 <h3 className="font-bold text-orange-800 mb-2 flex items-center gap-2">
-                  
-                 Respiratory Rate (RR)
+                  Respiratory Rate (RR)
                 </h3>
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="bg-red-100 rounded-lg p-2">
@@ -624,10 +664,8 @@ export default function PediatricVentilator({
                 </p>
               </div>
 
-              {/* هشدار MVent */}
               <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
                 <h3 className="font-bold text-teal-800 mb-2 flex items-center gap-2">
-                
                   تهویه دقیقه‌ای (MVent)
                 </h3>
                 <div className="grid grid-cols-3 gap-2 text-center">
@@ -649,10 +687,8 @@ export default function PediatricVentilator({
                 </p>
               </div>
 
-              {/* هشدار PEEP */}
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                 <h3 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
-                
                   PEEP
                 </h3>
                 <div className="grid grid-cols-3 gap-2 text-center">
@@ -674,11 +710,7 @@ export default function PediatricVentilator({
                 </p>
               </div>
             </div>
-
-          
           </div>
-
-       
         </div>
       </div>
     );
