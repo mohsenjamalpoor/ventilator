@@ -25,7 +25,6 @@ const SettingsModal = ({
       { key: "ieRatio", label: "نسبت I:E", type: "select", options: ["1:1", "1:1.5", "1:2", "1:2.5", "1:3", "1:3.5", "1:4"] },
       { key: "fio2", label: "FiO₂", unit: "%", min: 21, max: 100, step: 1 },
       { key: "trigger", label: "Trigger", unit: "cmH₂O", min: -20, max: 10, step: 1 },
-      { key: "breath cycle T", label: "Breath cycle T", unit: "s", min: 0.5, max: 15, step: 0.1},
       { key: "pressureSupport", label: "حمایت فشاری", unit: "cmH₂O", min: 0, max: 80, step: 1 },
      
     ],
@@ -59,7 +58,7 @@ const SettingsModal = ({
         <div className="bg-teal-600 text-white p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold">
-              ویرایش تنظیمات - {currentMode.name}
+              ویرایش تنظیمات ودامنه آلارم ها - {currentMode.name}
             </h2>
             <button
               onClick={onClose}
@@ -68,21 +67,12 @@ const SettingsModal = ({
               ×
             </button>
           </div>
-          <p className="text-teal-100 mt-2">
-            پارامترهای مد {currentMode.name} را تنظیم کنید
-          </p>
+          
         </div>
 
         {/* محتوای مودال */}
         <div className="p-6 max-h-[60vh] overflow-y-auto">
-          <div className="mb-4 p-4 bg-blue-50 rounded-lg">
-            <h3 className="font-semibold text-blue-800">مد فعال: {currentMode.name}</h3>
-            <p className="text-sm text-blue-600">
-              {currentMode.name === 'SIMV' && 'تهویه متناوب هماهنگ شده - ترکیبی از تنفس اجباری و خودبخودی'}
-              {currentMode.name === 'PRVC' && 'تهویه با حجم جاری تنظیم شده با فشار - کنترل فشار با تضمین حجم'}
-              {currentMode.name === 'CPAP' && 'فشار مثبت مداوم راه هوایی - برای تنفس خودبخودی'}
-            </p>
-          </div>
+         
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {parameters.map((param) => (
