@@ -38,9 +38,10 @@ const SettingsModal = ({
      
     ],
     CPAP: [
-      { key: "cpap", label: "سطح CPAP", unit: "cmH₂O", min: 3, max: 15, step: 0.5 },
+      { key: "peep", label: "PEEP", unit: "cmH₂O", min: 3, max: 15, step: 1 },
       { key: "fio2", label: "FiO₂", unit: "%", min: 21, max: 100, step: 1 },
       { key: "pressureSupport", label: "حمایت فشاری", unit: "cmH₂O", min: 5, max: 25, step: 1 },
+       { key: "trigger", label: "Trigger", unit: "cmH₂O", min: 0, max: 10, step: 0.1 },
     ]
   };
 
