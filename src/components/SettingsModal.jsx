@@ -56,7 +56,7 @@ const SettingsModal = ({
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
         
         {/* هدر مودال */}
-        <div className="bg-teal-600 text-white p-6">
+        <div className="bg-teal-500 text-white p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold">
               ویرایش تنظیمات ودامنه آلارم ها - {currentMode.name}

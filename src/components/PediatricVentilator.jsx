@@ -3,6 +3,119 @@ import ModeSelectionModal from "./ModeSelectionModal";
 import SettingsModal from "./SettingsModal";
 import { PiBellLight } from "react-icons/pi";
 
+// آبجکت تنظیمات اولیه
+const initialSettingsConfig = {
+  baseSettings: {
+    tidalVolume: (weight) => (weight * 7).toFixed(1),
+    respiratoryRate: 20,
+    fio2: 35,
+    peep: 5,
+    ieRatio: "1:2",
+    flowRate: 25,
+    mode: "SIMV",
+    pressureSupport: 12,
+    cpap: 6,
+    pip: 20,
+    ti: 1.0,
+    trigger: 5,
+  },
+
+  normalLung: {
+    reduced_consciousness: {
+      mode: "SIMV",
+      respiratoryRate: 16,
+      tidalVolume: (weight) => (weight * 8).toFixed(1),
+      peep: 5,
+      pressureSupport: 15,
+    },
+    seizure: {
+      mode: "PRVC",
+      respiratoryRate: 18,
+      tidalVolume: (weight) => (weight * 7.5).toFixed(1),
+      peep: 5,
+      fio2: 40,
+    },
+  },
+
+  obstructiveDiseases: {
+    bronchiolitis: {
+      mode: "PRVC",
+      respiratoryRate: 25,
+      tidalVolume: (weight) => (weight * 6).toFixed(1),
+      peep: 7,
+      ieRatio: "1:3",
+      pip: 22,
+      fio2: 45,
+    },
+    asthma: {
+      mode: "PRVC",
+      respiratoryRate: 22,
+      tidalVolume: (weight) => (weight * 6.5).toFixed(1),
+      peep: 6,
+      ieRatio: "1:3",
+      pip: 25,
+      fio2: 55,
+    },
+    copd: {
+      mode: "SIMV",
+      respiratoryRate: 18,
+      tidalVolume: (weight) => (weight * 7).toFixed(1),
+      peep: 6,
+      ieRatio: "1:3",
+      pip: 22,
+      fio2: 40,
+    },
+    foreign_body_aspiration: {
+      mode: "PRVC",
+      respiratoryRate: 24,
+      tidalVolume: (weight) => (weight * 6).toFixed(1),
+      peep: 5,
+      ieRatio: "1:2",
+      pip: 20,
+      fio2: 50,
+    },
+  },
+
+  restrictiveDiseases: {
+    pneumonia: {
+      mode: "PRVC",
+      respiratoryRate: 28,
+      tidalVolume: (weight) => (weight * 6).toFixed(1),
+      peep: 8,
+      ieRatio: "1:1.5",
+      pip: 28,
+      fio2: 65,
+    },
+    ards: {
+      mode: "PRVC",
+      respiratoryRate: 30,
+      tidalVolume: (weight) => (weight * 5).toFixed(1),
+      peep: 12,
+      ieRatio: "1:1",
+      pip: 32,
+      fio2: 85,
+    },
+    pulmonary_edema: {
+      mode: "PRVC",
+      respiratoryRate: 35,
+      tidalVolume: (weight) => (weight * 6).toFixed(1),
+      peep: 10,
+      ieRatio: "1:1.5",
+      pip: 30,
+      fio2: 70,
+    },
+    atelectasis: {
+      mode: "SIMV",
+      respiratoryRate: 22,
+      tidalVolume: (weight) => (weight * 7).toFixed(1),
+      peep: 8,
+      ieRatio: "1:2",
+      pip: 25,
+      fio2: 55,
+    },
+  },
+};
+
 export default function PediatricVentilator({
   weight,
   age,
@@ -15,144 +128,47 @@ export default function PediatricVentilator({
 }) {
   // تابع برای محاسبه تنظیمات اولیه بر اساس نوع بیماری
   const getInitialSettings = () => {
+    const base = initialSettingsConfig.baseSettings;
+    
+    // ایجاد تنظیمات پایه با محاسبه مقادیر وابسته به وزن
     const baseSettings = {
-      tidalVolume: (weight * 7).toFixed(1),
-      respiratoryRate: 20,
-      fio2: 35,
-      peep: 5,
-      ieRatio: "1:2",
-      flowRate: 25,
-      mode: "SIMV",
-      pressureSupport: 12,
-      cpap: 6,
-      pip: 20,
-      ti: 1.0,
-      trigger: 5,
+      ...base,
+      tidalVolume: base.tidalVolume(weight),
     };
 
-    // تنظیمات بر اساس نوع درگیری ریوی
     switch (lungInvolvement) {
       case "normal":
-        if (normalLungCondition === "reduced_consciousness") {
+        if (normalLungCondition && initialSettingsConfig.normalLung[normalLungCondition]) {
+          const normalSettings = initialSettingsConfig.normalLung[normalLungCondition];
           return {
             ...baseSettings,
-            mode: "SIMV",
-            respiratoryRate: 16,
-            tidalVolume: (weight * 8).toFixed(1),
-            peep: 5,
-            pressureSupport: 15,
-          };
-        } else if (normalLungCondition === "seizure") {
-          return {
-            ...baseSettings,
-            mode: "PRVC",
-            respiratoryRate: 18,
-            tidalVolume: (weight * 7.5).toFixed(1),
-            peep: 5,
-            fio2: 40,
+            ...normalSettings,
+            tidalVolume: normalSettings.tidalVolume(weight),
           };
         }
         return baseSettings;
 
       case "obstructive":
-        switch (obstructiveDisease) {
-          case "bronchiolitis":
-            return {
-              ...baseSettings,
-              mode: "PRVC",
-              respiratoryRate: 25,
-              tidalVolume: (weight * 6).toFixed(1),
-              peep: 7,
-              ieRatio: "1:3",
-              pip: 22,
-              fio2: 45,
-            };
-          case "asthma":
-            return {
-              ...baseSettings,
-              mode: "PRVC",
-              respiratoryRate: 22,
-              tidalVolume: (weight * 6.5).toFixed(1),
-              peep: 6,
-              ieRatio: "1:3",
-              pip: 25,
-              fio2: 55,
-            };
-          case "copd":
-            return {
-              ...baseSettings,
-              mode: "SIMV",
-              respiratoryRate: 18,
-              tidalVolume: (weight * 7).toFixed(1),
-              peep: 6,
-              ieRatio: "1:3",
-              pip: 22,
-              fio2: 40,
-            };
-          case "foreign_body_aspiration":
-            return {
-              ...baseSettings,
-              mode: "PRVC",
-              respiratoryRate: 24,
-              tidalVolume: (weight * 6).toFixed(1),
-              peep: 5,
-              ieRatio: "1:2",
-              pip: 20,
-              fio2: 50,
-            };
-          default:
-            return baseSettings;
+        if (obstructiveDisease && initialSettingsConfig.obstructiveDiseases[obstructiveDisease]) {
+          const obstructiveSettings = initialSettingsConfig.obstructiveDiseases[obstructiveDisease];
+          return {
+            ...baseSettings,
+            ...obstructiveSettings,
+            tidalVolume: obstructiveSettings.tidalVolume(weight),
+          };
         }
+        return baseSettings;
 
       case "restrictive":
-        switch (restrictiveDisease) {
-          case "pneumonia":
-            return {
-              ...baseSettings,
-              mode: "PRVC",
-              respiratoryRate: 28,
-              tidalVolume: (weight * 6).toFixed(1),
-              peep: 8,
-              ieRatio: "1:1.5",
-              pip: 28,
-              fio2: 65,
-            };
-          case "ards":
-            return {
-              ...baseSettings,
-              mode: "PRVC",
-              respiratoryRate: 30,
-              tidalVolume: (weight * 5).toFixed(1),
-              peep: 12,
-              ieRatio: "1:1",
-              pip: 32,
-              fio2: 85,
-            };
-          case "pulmonary_edema":
-            return {
-              ...baseSettings,
-              mode: "PRVC",
-              respiratoryRate: 35,
-              tidalVolume: (weight * 6).toFixed(1),
-              peep: 10,
-              ieRatio: "1:1.5",
-              pip: 30,
-              fio2: 70,
-            };
-          case "atelectasis":
-            return {
-              ...baseSettings,
-              mode: "SIMV",
-              respiratoryRate: 22,
-              tidalVolume: (weight * 7).toFixed(1),
-              peep: 8,
-              ieRatio: "1:2",
-              pip: 25,
-              fio2: 55,
-            };
-          default:
-            return baseSettings;
+        if (restrictiveDisease && initialSettingsConfig.restrictiveDiseases[restrictiveDisease]) {
+          const restrictiveSettings = initialSettingsConfig.restrictiveDiseases[restrictiveDisease];
+          return {
+            ...baseSettings,
+            ...restrictiveSettings,
+            tidalVolume: restrictiveSettings.tidalVolume(weight),
+          };
         }
+        return baseSettings;
 
       default:
         return baseSettings;
@@ -764,8 +780,6 @@ export default function PediatricVentilator({
         bronchiolitis: "برونشیولیت",
         asthma: "آسم",
         copd: "بیماری انسدادی مزمن ریوی",
-        bronchiectasis: "برونشکتازی",
-        cystic_fibrosis: "فیبروز سیستیک",
         foreign_body_aspiration: "آسپیراسیون جسم خارجی"
       };
       return diseases[obstructiveDisease] || obstructiveDisease;
@@ -774,9 +788,6 @@ export default function PediatricVentilator({
         pneumonia: "پنومونی",
         ards: "سندرم زجر تنفسی حاد (ARDS)",
         pulmonary_edema: "ادم ریوی",
-        pulmonary_fibrosis: "فیبروز ریوی",
-        pleural_effusion: "افیوژن پلور",
-        pneumothorax: "پنوموتوراکس",
         atelectasis: "آتلکتازی"
       };
       return diseases[restrictiveDisease] || restrictiveDisease;
@@ -837,7 +848,7 @@ export default function PediatricVentilator({
               <p className="text-orange-600 text-sm">نوع درگیری</p>
               <p className="text-xl font-bold text-orange-800">
                 {lungInvolvement === "normal" ? "ریه نرمال" : 
-                 lungInvolvement === "obstructive" ? "انسدادی" : "Restrictive"}
+                 lungInvolvement === "obstructive" ? "انسدادی" : "محدودکننده"}
               </p>
             </div>
           </div>
@@ -919,219 +930,219 @@ export default function PediatricVentilator({
           {/* مانیتور ونتیلاتور و تفسیر ABG */}
           <div className="lg:col-span-2">
             <div className="grid grid-cols-1 gap-6">
-           {/* مانیتور ونتیلاتور */}
-<div className="bg-gradient-to-br from-blue-50 to-cyan-100 rounded-2xl shadow-lg p-6 border border-blue-200">
-  <div className="flex items-center justify-between mb-6">
-    <h2 className="text-xl font-bold text-blue-800">
-      مانیتور ونتیلاتور - کودکان
-    </h2>
-    <div className="flex items-center gap-2">
-      <button 
-        onClick={openAlarmModal}
-        className="text-blue-600 hover:text-blue-800 transition-colors p-2 rounded-lg hover:bg-blue-100"
-      >
-        <PiBellLight className="w-8 h-8 bg-blue-500 hover:bg-blue-600 rounded-lg p-1 text-white" />
-      </button>
-      <button
-        onClick={openSettingsModal}
-        className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-4 py-2 rounded-lg transition-all flex items-center gap-2 shadow-md"
-      >
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-          />
-        </svg>
-        {currentSettings.mode}
-      </button>
-    </div>
-  </div>
+              {/* مانیتور ونتیلاتور */}
+              <div className="bg-gradient-to-br from-blue-50 to-cyan-100 rounded-2xl shadow-lg p-6 border border-blue-200">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-blue-800">
+                    مانیتور ونتیلاتور - کودکان
+                  </h2>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={openAlarmModal}
+                      className="text-blue-600 hover:text-blue-800 transition-colors p-2 rounded-lg hover:bg-blue-100"
+                    >
+                      <PiBellLight className="w-8 h-8 bg-blue-500 hover:bg-blue-600 rounded-lg p-1 text-white" />
+                    </button>
+                    <button
+                      onClick={openSettingsModal}
+                      className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-4 py-2 rounded-lg transition-all flex items-center gap-2 shadow-md"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        />
+                      </svg>
+                      {currentSettings.mode}
+                    </button>
+                  </div>
+                </div>
 
-  {/* بخش مانیتور  */}
-  <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 mb-4 border border-blue-100 shadow-inner">
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-      {/* PIP */}
-      <div className="bg-gradient-to-br from-indigo-100 to-indigo-200 rounded-lg p-3 border border-indigo-300 shadow-sm">
-        <div className="text-center">
-          <h3 className="text-indigo-700 text-xs mb-1 font-semibold">PIP</h3>
-          <p className="text-xl font-bold text-indigo-900">
-            {currentSettings.pip}
-          </p>
-          <p className="text-indigo-600 text-xs">cmH₂O</p>
-        </div>
-      </div>
+                {/* بخش مانیتور  */}
+                <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 mb-4 border border-blue-100 shadow-inner">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                    {/* PIP */}
+                    <div className="bg-gradient-to-br from-indigo-100 to-indigo-200 rounded-lg p-3 border border-indigo-300 shadow-sm">
+                      <div className="text-center">
+                        <h3 className="text-indigo-700 text-xs mb-1 font-semibold">PIP</h3>
+                        <p className="text-xl font-bold text-indigo-900">
+                          {currentSettings.pip}
+                        </p>
+                        <p className="text-indigo-600 text-xs">cmH₂O</p>
+                      </div>
+                    </div>
 
-      {/* FiO2 */}
-      <div className="bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg p-3 border border-purple-300 shadow-sm">
-        <div className="text-center">
-          <h3 className="text-purple-700 text-xs mb-1 font-semibold">FiO₂</h3>
-          <p className="text-xl font-bold text-purple-900">
-            {currentSettings.fio2}%
-          </p>
-          <p className="text-purple-600 text-xs">%</p>
-        </div>
-      </div>
+                    {/* FiO2 */}
+                    <div className="bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg p-3 border border-purple-300 shadow-sm">
+                      <div className="text-center">
+                        <h3 className="text-purple-700 text-xs mb-1 font-semibold">FiO₂</h3>
+                        <p className="text-xl font-bold text-purple-900">
+                          {currentSettings.fio2}%
+                        </p>
+                        <p className="text-purple-600 text-xs">%</p>
+                      </div>
+                    </div>
 
-      {/* PEEP */}
-      <div className="bg-gradient-to-br from-red-100 to-red-200 rounded-lg p-3 border border-red-300 shadow-sm">
-        <div className="text-center">
-          <h3 className="text-red-700 text-xs mb-1 font-semibold">PEEP</h3>
-          <p className="text-xl font-bold text-red-900">
-            {currentSettings.peep}
-          </p>
-          <p className="text-red-600 text-xs">cmH₂O</p>
-        </div>
-      </div>
+                    {/* PEEP */}
+                    <div className="bg-gradient-to-br from-red-100 to-red-200 rounded-lg p-3 border border-red-300 shadow-sm">
+                      <div className="text-center">
+                        <h3 className="text-red-700 text-xs mb-1 font-semibold">PEEP</h3>
+                        <p className="text-xl font-bold text-red-900">
+                          {currentSettings.peep}
+                        </p>
+                        <p className="text-red-600 text-xs">cmH₂O</p>
+                      </div>
+                    </div>
 
-      {/* MVent */}
-      <div className="bg-gradient-to-br from-teal-100 to-teal-200 rounded-lg p-3 border border-teal-300 shadow-sm">
-        <div className="text-center">
-          <h3 className="text-teal-700 text-xs mb-1 font-semibold">MVent</h3>
-          <p className="text-xl font-bold text-teal-900">
-            {currentSettings.mvent}
-          </p>
-          <p className="text-teal-600 text-xs">L/min</p>
-        </div>
-      </div>
+                    {/* MVent */}
+                    <div className="bg-gradient-to-br from-teal-100 to-teal-200 rounded-lg p-3 border border-teal-300 shadow-sm">
+                      <div className="text-center">
+                        <h3 className="text-teal-700 text-xs mb-1 font-semibold">MVent</h3>
+                        <p className="text-xl font-bold text-teal-900">
+                          {currentSettings.mvent}
+                        </p>
+                        <p className="text-teal-600 text-xs">L/min</p>
+                      </div>
+                    </div>
 
-      {/* VTi */}
-      <div className="bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg p-3 border border-blue-300 shadow-sm">
-        <div className="text-center">
-          <h3 className="text-blue-700 text-xs mb-1 font-semibold">VTi</h3>
-          <p className="text-xl font-bold text-blue-900">
-            {currentSettings.vti}
-          </p>
-          <p className="text-blue-600 text-xs">ml</p>
-        </div>
-      </div>
+                    {/* VTi */}
+                    <div className="bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg p-3 border border-blue-300 shadow-sm">
+                      <div className="text-center">
+                        <h3 className="text-blue-700 text-xs mb-1 font-semibold">VTi</h3>
+                        <p className="text-xl font-bold text-blue-900">
+                          {currentSettings.vti}
+                        </p>
+                        <p className="text-blue-600 text-xs">ml</p>
+                      </div>
+                    </div>
 
-      {/* VTe */}
-      <div className="bg-gradient-to-br from-green-100 to-green-200 rounded-lg p-3 border border-green-300 shadow-sm">
-        <div className="text-center">
-          <h3 className="text-green-700 text-xs mb-1 font-semibold">VTe</h3>
-          <p className="text-xl font-bold text-green-900">
-            {currentSettings.vte}
-          </p>
-          <p className="text-green-600 text-xs">ml</p>
-        </div>
-      </div>
-    </div>
-  </div>
+                    {/* VTe */}
+                    <div className="bg-gradient-to-br from-green-100 to-green-200 rounded-lg p-3 border border-green-300 shadow-sm">
+                      <div className="text-center">
+                        <h3 className="text-green-700 text-xs mb-1 font-semibold">VTe</h3>
+                        <p className="text-xl font-bold text-green-900">
+                          {currentSettings.vte}
+                        </p>
+                        <p className="text-green-600 text-xs">ml</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-  {/* بخش تنظیمات در پایین صفحه */}
-  <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-blue-100 shadow-inner">
-    <h3 className="text-blue-800 font-bold mb-3 text-center">
-      تنظیمات ونتیلاتور کودکان
-    </h3>
+                {/* بخش تنظیمات در پایین صفحه */}
+                <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-blue-100 shadow-inner">
+                  <h3 className="text-blue-800 font-bold mb-3 text-center">
+                    تنظیمات ونتیلاتور کودکان
+                  </h3>
 
-    {/* برای مد CPAP */}
-    {selectedMode === "CPAP" ? (
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        {/* Pressure Support */}
-        <div className="bg-gradient-to-br from-indigo-100 to-indigo-200 rounded-lg p-3 border-2 border-indigo-400 shadow-sm">
-          <div className="text-center">
-            <h3 className="text-indigo-700 text-xs mb-1 font-semibold">
-              Pressure Support
-            </h3>
-            <p className="text-xl font-bold text-indigo-900 mb-1">
-              {currentSettings.pressureSupport}
-            </p>
-            <p className="text-indigo-600 text-xs">cmH₂O</p>
-          </div>
-        </div>
+                  {/* برای مد CPAP */}
+                  {selectedMode === "CPAP" ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {/* Pressure Support */}
+                      <div className="bg-gradient-to-br from-indigo-100 to-indigo-200 rounded-lg p-3 border-2 border-indigo-400 shadow-sm">
+                        <div className="text-center">
+                          <h3 className="text-indigo-700 text-xs mb-1 font-semibold">
+                            Pressure Support
+                          </h3>
+                          <p className="text-xl font-bold text-indigo-900 mb-1">
+                            {currentSettings.pressureSupport}
+                          </p>
+                          <p className="text-indigo-600 text-xs">cmH₂O</p>
+                        </div>
+                      </div>
 
-        {/* PEEP */}
-        <div className="bg-gradient-to-br from-red-100 to-red-200 rounded-lg p-3 border-2 border-red-400 shadow-sm">
-          <div className="text-center">
-            <h3 className="text-red-700 text-xs mb-1 font-semibold">PEEP</h3>
-            <p className="text-xl font-bold text-red-900 mb-1">
-              {currentSettings.peep}
-            </p>
-            <p className="text-red-600 text-xs">cmH₂O</p>
-          </div>
-        </div>
+                      {/* PEEP */}
+                      <div className="bg-gradient-to-br from-red-100 to-red-200 rounded-lg p-3 border-2 border-red-400 shadow-sm">
+                        <div className="text-center">
+                          <h3 className="text-red-700 text-xs mb-1 font-semibold">PEEP</h3>
+                          <p className="text-xl font-bold text-red-900 mb-1">
+                            {currentSettings.peep}
+                          </p>
+                          <p className="text-red-600 text-xs">cmH₂O</p>
+                        </div>
+                      </div>
 
-        {/* FiO2 */}
-        <div className="bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg p-3 border-2 border-purple-400 shadow-sm">
-          <div className="text-center">
-            <h3 className="text-purple-700 text-xs mb-1 font-semibold">
-              FiO₂
-            </h3>
-            <p className="text-xl font-bold text-purple-900 mb-1">
-              {currentSettings.fio2}%
-            </p>
-            <p className="text-purple-600 text-xs">%</p>
-          </div>
-        </div>
-      </div>
-    ) : (
-      /* برای مدهای SIMV و PRVC */
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {/* TV */}
-        <div className="bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg p-3 border-2 border-blue-400 shadow-sm">
-          <div className="text-center">
-            <h3 className="text-blue-700 text-xs mb-1 font-semibold">TV</h3>
-            <p className="text-xl font-bold text-blue-900 mb-1">
-              {currentSettings.tidalVolume}
-            </p>
-            <p className="text-blue-600 text-xs">ml</p>
-          </div>
-        </div>
+                      {/* FiO2 */}
+                      <div className="bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg p-3 border-2 border-purple-400 shadow-sm">
+                        <div className="text-center">
+                          <h3 className="text-purple-700 text-xs mb-1 font-semibold">
+                            FiO₂
+                          </h3>
+                          <p className="text-xl font-bold text-purple-900 mb-1">
+                            {currentSettings.fio2}%
+                          </p>
+                          <p className="text-purple-600 text-xs">%</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* برای مدهای SIMV و PRVC */
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {/* TV */}
+                      <div className="bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg p-3 border-2 border-blue-400 shadow-sm">
+                        <div className="text-center">
+                          <h3 className="text-blue-700 text-xs mb-1 font-semibold">TV</h3>
+                          <p className="text-xl font-bold text-blue-900 mb-1">
+                            {currentSettings.tidalVolume}
+                          </p>
+                          <p className="text-blue-600 text-xs">ml</p>
+                        </div>
+                      </div>
 
-        {/* RR */}
-        <div className="bg-gradient-to-br from-green-100 to-green-200 rounded-lg p-3 border-2 border-green-400 shadow-sm">
-          <div className="text-center">
-            <h3 className="text-green-700 text-xs mb-1 font-semibold">RR</h3>
-            <p className="text-xl font-bold text-green-900 mb-1">
-              {currentSettings.respiratoryRate}
-            </p>
-            <p className="text-green-600 text-xs">/min</p>
-          </div>
-        </div>
+                      {/* RR */}
+                      <div className="bg-gradient-to-br from-green-100 to-green-200 rounded-lg p-3 border-2 border-green-400 shadow-sm">
+                        <div className="text-center">
+                          <h3 className="text-green-700 text-xs mb-1 font-semibold">RR</h3>
+                          <p className="text-xl font-bold text-green-900 mb-1">
+                            {currentSettings.respiratoryRate}
+                          </p>
+                          <p className="text-green-600 text-xs">/min</p>
+                        </div>
+                      </div>
 
-        {/* PEEP */}
-        <div className="bg-gradient-to-br from-red-100 to-red-200 rounded-lg p-3 border-2 border-red-400 shadow-sm">
-          <div className="text-center">
-            <h3 className="text-red-700 text-xs mb-1 font-semibold">PEEP</h3>
-            <p className="text-xl font-bold text-red-900 mb-1">
-              {currentSettings.peep}
-            </p>
-            <p className="text-red-600 text-xs">cmH₂O</p>
-          </div>
-        </div>
+                      {/* PEEP */}
+                      <div className="bg-gradient-to-br from-red-100 to-red-200 rounded-lg p-3 border-2 border-red-400 shadow-sm">
+                        <div className="text-center">
+                          <h3 className="text-red-700 text-xs mb-1 font-semibold">PEEP</h3>
+                          <p className="text-xl font-bold text-red-900 mb-1">
+                            {currentSettings.peep}
+                          </p>
+                          <p className="text-red-600 text-xs">cmH₂O</p>
+                        </div>
+                      </div>
 
-        {/* FiO2 */}
-        <div className="bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg p-3 border-2 border-purple-400 shadow-sm">
-          <div className="text-center">
-            <h3 className="text-purple-700 text-xs mb-1 font-semibold">
-              FiO₂
-            </h3>
-            <p className="text-xl font-bold text-purple-900 mb-1">
-              {currentSettings.fio2}%
-            </p>
-            <p className="text-purple-600 text-xs">%</p>
-          </div>
-        </div>
-      </div>
-    )}
-  </div>
+                      {/* FiO2 */}
+                      <div className="bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg p-3 border-2 border-purple-400 shadow-sm">
+                        <div className="text-center">
+                          <h3 className="text-purple-700 text-xs mb-1 font-semibold">
+                            FiO₂
+                          </h3>
+                          <p className="text-xl font-bold text-purple-900 mb-1">
+                            {currentSettings.fio2}%
+                          </p>
+                          <p className="text-purple-600 text-xs">%</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
-  {/* وضعیت کنونی */}
-  {abgInterpretation && (
-    <div className="mt-4 p-3 bg-yellow-100 border border-yellow-400 rounded-lg">
-      <p className="text-yellow-800 text-center font-semibold">
-        وضعیت: {abgInterpretation}
-      </p>
-    </div>
-  )}
-</div>
+                {/* وضعیت کنونی */}
+                {abgInterpretation && (
+                  <div className="mt-4 p-3 bg-yellow-100 border border-yellow-400 rounded-lg">
+                    <p className="text-yellow-800 text-center font-semibold">
+                      وضعیت: {abgInterpretation}
+                    </p>
+                  </div>
+                )}
+              </div>
 
               {/* بخش تفسیر ABG */}
               <div className="bg-white rounded-2xl shadow-lg p-6">
