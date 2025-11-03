@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import ModeSelectionModal from "./ModeSelectionModal";
 import SettingsModal from "./SettingsModal";
 import { PiBellLight } from "react-icons/pi";
 import Tooltip from "./Tooltip";
 
-// آبجکت تنظیمات اولیه
+// آبجکت تنظیمات اولیه (همان کد قبلی)
 const initialSettingsConfig = {
   baseSettings: {
     tidalVolume: (weight) => (weight * 7).toFixed(1),
@@ -131,7 +131,6 @@ export default function PediatricVentilator({
   const getInitialSettings = () => {
     const base = initialSettingsConfig.baseSettings;
     
-    // ایجاد تنظیمات پایه با محاسبه مقادیر وابسته به وزن
     const baseSettings = {
       ...base,
       tidalVolume: base.tidalVolume(weight),
@@ -176,7 +175,6 @@ export default function PediatricVentilator({
     }
   };
 
-
   // محاسبه تهویه دقیقه‌ای
   const calculateMvent = (tv, rr) => {
     return ((parseFloat(tv) * parseFloat(rr)) / 1000).toFixed(2);
@@ -209,35 +207,484 @@ export default function PediatricVentilator({
   const [showAlarmModal, setShowAlarmModal] = useState(false);
   const [tempSettings, setTempSettings] = useState({ ...initialSettings });
 
-  // محاسبه محدوده‌های هشدار برای کودکان
+  // محاسبه محدوده‌های هشدار برای کودکان - به‌روز شده
   const calculateAlarmRanges = () => {
     const currentRR = parseFloat(currentSettings.respiratoryRate);
     const currentMvent = parseFloat(currentSettings.mvent);
     const currentPeep = parseFloat(currentSettings.peep);
+    const currentPip = parseFloat(currentSettings.pip);
+    const currentTv = parseFloat(currentSettings.tidalVolume);
+    const currentFio2 = parseFloat(currentSettings.fio2);
 
     return {
       rr: {
-        low: Math.max(8, currentRR / 2).toFixed(1),
-        high: (currentRR * 2).toFixed(1),
+        low: Math.max(8, Math.round(currentRR * 0.6)),
+        high: Math.round(currentRR * 1.4),
         current: currentRR,
         unit: "/min"
       },
       mvent: {
-        low: (currentMvent / 2).toFixed(2),
-        high: (currentMvent * 2).toFixed(2),
+        low: (currentMvent * 0.6).toFixed(2),
+        high: (currentMvent * 1.4).toFixed(2),
         current: currentMvent,
         unit: "L/min"
       },
       peep: {
-        low: Math.max(3, currentPeep - 2).toFixed(1),
-        high: (currentPeep + 2).toFixed(1),
+        low: Math.max(3, currentPeep - 2),
+        high: currentPeep + 2,
         current: currentPeep,
         unit: "cmH₂O"
+      },
+      pip: {
+        low: Math.max(15, currentPip - 5),
+        high: currentPip + 5,
+        current: currentPip,
+        unit: "cmH₂O"
+      },
+      tv: {
+        low: Math.round(currentTv * 0.7),
+        high: Math.round(currentTv * 1.3),
+        current: currentTv,
+        unit: "ml"
+      },
+      fio2: {
+        low: Math.max(21, currentFio2 - 10), // 10% پایین
+        high: Math.min(100, currentFio2 + 10), // 10% بالا
+        current: currentFio2,
+        unit: "%"
       }
     };
   };
 
   const [alarmRanges, setAlarmRanges] = useState(calculateAlarmRanges());
+
+  // به‌روزرسانی آلارم‌ها هنگام تغییر تنظیمات
+  useEffect(() => {
+    setAlarmRanges(calculateAlarmRanges());
+  }, [currentSettings]);
+
+  // کامپوننت نمایش آلارم برای هر پارامتر
+  const AlarmIndicator = ({ label, value, low, high, unit, current }) => {
+    const numValue = parseFloat(value);
+    const isLowAlarm = numValue < low;
+    const isHighAlarm = numValue > high;
+    
+    return (
+      <div className="relative">
+        <div className={`text-center p-2 rounded-lg border-2 ${
+          isLowAlarm 
+            ? "bg-red-50 border-red-300" 
+            : isHighAlarm 
+            ? "bg-yellow-50 border-yellow-300" 
+            : "bg-green-50 border-green-300"
+        }`}>
+          <h3 className="text-xs font-semibold text-gray-600 mb-1">{label}</h3>
+          <p className={`text-lg font-bold ${
+            isLowAlarm 
+              ? "text-red-600" 
+              : isHighAlarm 
+              ? "text-yellow-600" 
+              : "text-green-600"
+          }`}>
+            {value}
+          </p>
+          <p className="text-xs text-gray-500">{unit}</p>
+          
+          {/* نمایش محدوده آلارم */}
+          <div className="mt-1 text-xs text-gray-400 flex justify-center items-center gap-1">
+            <span className="text-red-400">{low}</span>
+            <div className="w-8 h-1 bg-gradient-to-r from-red-400 via-green-400 to-yellow-400 rounded-full"></div>
+            <span className="text-yellow-500">{high}</span>
+          </div>
+        </div>
+        
+        {/* نشانگر آلارم */}
+        {(isLowAlarm || isHighAlarm) && (
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+        )}
+      </div>
+    );
+  };
+
+  // کامپوننت مودال هشدار - فقط سه پارامتر اصلی
+  const AlarmModal = ({ show, onClose, alarmRanges }) => {
+    if (!show) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4">
+          <div className="bg-blue-600 text-white rounded-t-2xl p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <PiBellLight className="w-6 h-6" />
+                <h2 className="text-xl font-bold">تنظیمات آلارم - کودکان</h2>
+              </div>
+              <button
+                onClick={onClose}
+                className="text-white hover:text-gray-200 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div className="p-6">
+            <div className="space-y-4">
+              {/* Respiratory Rate */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <h3 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
+                  میزان تنفس (RR)
+                </h3>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-red-100 rounded-lg p-2">
+                    <p className="text-xs text-red-600">پایین</p>
+                    <p className="font-bold text-red-800">{alarmRanges.rr.low}</p>
+                  </div>
+                  <div className="bg-green-100 rounded-lg p-2">
+                    <p className="text-xs text-green-600">فعلی</p>
+                    <p className="font-bold text-green-800">{alarmRanges.rr.current}</p>
+                  </div>
+                  <div className="bg-yellow-100 rounded-lg p-2">
+                    <p className="text-xs text-yellow-600">بالا</p>
+                    <p className="font-bold text-yellow-800">{alarmRanges.rr.high}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-blue-600 mt-2 text-center">
+                  واحد: {alarmRanges.rr.unit}
+                </p>
+              </div>
+
+              {/* Minute Ventilation */}
+              <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
+                <h3 className="font-bold text-teal-800 mb-2 flex items-center gap-2">
+                  تهویه دقیقه‌ای (MVent)
+                </h3>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-red-100 rounded-lg p-2">
+                    <p className="text-xs text-red-600">پایین</p>
+                    <p className="font-bold text-red-800">{alarmRanges.mvent.low}</p>
+                  </div>
+                  <div className="bg-green-100 rounded-lg p-2">
+                    <p className="text-xs text-green-600">فعلی</p>
+                    <p className="font-bold text-green-800">{alarmRanges.mvent.current}</p>
+                  </div>
+                  <div className="bg-yellow-100 rounded-lg p-2">
+                    <p className="text-xs text-yellow-600">بالا</p>
+                    <p className="font-bold text-yellow-800">{alarmRanges.mvent.high}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-teal-600 mt-2 text-center">
+                  واحد: {alarmRanges.mvent.unit}
+                </p>
+              </div>
+
+              {/* PEEP */}
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                <h3 className="font-bold text-green-800 mb-2 flex items-center gap-2">
+                  PEEP
+                </h3>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-red-100 rounded-lg p-2">
+                    <p className="text-xs text-red-600">پایین</p>
+                    <p className="font-bold text-red-800">{alarmRanges.peep.low}</p>
+                  </div>
+                  <div className="bg-green-100 rounded-lg p-2">
+                    <p className="text-xs text-green-600">فعلی</p>
+                    <p className="font-bold text-green-800">{alarmRanges.peep.current}</p>
+                  </div>
+                  <div className="bg-yellow-100 rounded-lg p-2">
+                    <p className="text-xs text-yellow-600">بالا</p>
+                    <p className="font-bold text-yellow-800">{alarmRanges.peep.high}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-green-600 mt-2 text-center">
+                  واحد: {alarmRanges.peep.unit}
+                </p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // اعتبارسنجی مقادیر ABG برای کودکان
+  const validateABG = () => {
+    const { pH, pCO2, pO2, HCO3 } = abgValues;
+    const errors = {};
+    let isValid = true;
+
+    if (!pH) {
+      errors.pH = "مقدار pH الزامی است";
+      isValid = false;
+    } else {
+      const pHNum = parseFloat(pH);
+      if (pHNum < 6.9 || pHNum > 7.6) {
+        errors.pH = "مقدار pH باید بین 6.9 تا 7.6 باشد";
+        isValid = false;
+      } else if (pHNum < 7.35 || pHNum > 7.45) {
+        errors.pH = "مقدار pH خارج از محدوده نرمال است";
+      }
+    }
+
+    if (!pCO2) {
+      errors.pCO2 = "مقدار pCO2 الزامی است";
+      isValid = false;
+    } else {
+      const pCO2Num = parseFloat(pCO2);
+      if (pCO2Num < 25 || pCO2Num > 120) {
+        errors.pCO2 = "مقدار pCO2 باید بین 25 تا 120 mmHg باشد";
+        isValid = false;
+      } else if (pCO2Num < 35 || pCO2Num > 45) {
+        errors.pCO2 = "مقدار pCO2 خارج از محدوده نرمال است";
+      }
+    }
+
+    if (!pO2) {
+      errors.pO2 = "مقدار pO2 الزامی است";
+      isValid = false;
+    } else {
+      const pO2Num = parseFloat(pO2);
+      if (pO2Num < 40 || pO2Num > 100) {
+        errors.pO2 = "مقدار pO2 باید بین 40 تا 100 mmHg باشد";
+        isValid = false;
+      } else if (pO2Num < 80) {
+        errors.pO2 = "مقدار pO2 پایین است (هیپوکسمی)";
+      }
+    }
+
+    if (!HCO3) {
+      errors.HCO3 = "مقدار HCO3 الزامی است";
+      isValid = false;
+    } else {
+      const HCO3Num = parseFloat(HCO3);
+      if (HCO3Num < 2 || HCO3Num > 32) {
+        errors.HCO3 = "مقدار HCO3 باید بین 2 تا 32 mEq/L باشد";
+        isValid = false;
+      } else if (HCO3Num < 22 || HCO3Num > 26) {
+        errors.HCO3 = "مقدار HCO3 خارج از محدوده نرمال است";
+      }
+    }
+
+    setAbgErrors(errors);
+    setShowValidation(true);
+    return isValid;
+  };
+
+  // تفسیر ABG برای کودکان
+  const interpretABG = () => {
+    if (!validateABG()) {
+      return;
+    }
+
+    const { pH, pCO2, pO2, HCO3 } = abgValues;
+    const pHNum = parseFloat(pH);
+    const pCO2Num = parseFloat(pCO2);
+    const pO2Num = parseFloat(pO2);
+    const HCO3Num = parseFloat(HCO3);
+
+    let interpretation = "";
+    let newSettings = { ...currentSettings };
+
+    // تفسیر برای کودکان
+    if (pHNum < 7.35) {
+      if (pCO2Num > 45) {
+        interpretation = "اسیدوز تنفسی";
+        newSettings.respiratoryRate = Math.min(
+          35,
+          currentSettings.respiratoryRate + 3
+        );
+        if (selectedMode === "SIMV" || selectedMode === "PRVC") {
+          newSettings.tidalVolume = Math.min(
+            weight * 10,
+            parseFloat(currentSettings.tidalVolume) + 2
+          ).toFixed(1);
+        }
+      } else if (HCO3Num < 22) {
+        interpretation = "اسیدوز متابولیک";
+        newSettings.tidalVolume = Math.min(
+          weight * 10,
+          parseFloat(currentSettings.tidalVolume) + 3
+        ).toFixed(1);
+      }
+    } else if (pHNum > 7.45) {
+      if (pCO2Num < 35) {
+        interpretation = "آلکالوز تنفسی";
+        newSettings.respiratoryRate = Math.max(
+          12,
+          currentSettings.respiratoryRate - 3
+        );
+        if (selectedMode === "SIMV" || selectedMode === "PRVC") {
+          newSettings.tidalVolume = Math.max(
+            weight * 5,
+            parseFloat(currentSettings.tidalVolume) - 2
+          ).toFixed(1);
+        }
+      } else if (HCO3Num > 26) {
+        interpretation = "آلکالوز متابولیک";
+        newSettings.tidalVolume = Math.max(
+          weight * 5,
+          parseFloat(currentSettings.tidalVolume) - 2
+          ).toFixed(1);
+        }
+    } else {
+      interpretation = "ABG نرمال";
+    }
+
+    // تنظیمات بر اساس اکسیژناسیون
+    if (pO2Num < 60) {
+      newSettings.fio2 = Math.min(80, currentSettings.fio2 + 25);
+      newSettings.peep = Math.min(12, currentSettings.peep + 3);
+      interpretation += " - هیپوکسمی شدید";
+    } else if (pO2Num < 80) {
+      newSettings.fio2 = Math.min(60, currentSettings.fio2 + 15);
+      newSettings.peep = Math.min(10, currentSettings.peep + 2);
+      interpretation += " - هیپوکسمی";
+    } else if (pO2Num > 100) {
+      newSettings.fio2 = Math.max(25, currentSettings.fio2 - 10);
+      interpretation += " - اکسیژناسیون خوب";
+    }
+
+    newSettings.mvent = calculateMvent(
+      newSettings.tidalVolume,
+      newSettings.respiratoryRate
+    );
+    newSettings.vti = newSettings.tidalVolume;
+
+    setAbgInterpretation(interpretation);
+    setCurrentSettings(newSettings);
+  };
+
+  const handleAbgChange = (field, value) => {
+    setAbgValues((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+    if (abgErrors[field]) {
+      setAbgErrors((prev) => ({
+        ...prev,
+        [field]: "",
+      }));
+    }
+  };
+
+  const resetSettings = () => {
+    const resetSettings = {
+      ...initialSettings,
+      mvent: calculateMvent(
+        initialSettings.tidalVolume,
+        initialSettings.respiratoryRate
+      ),
+      vti: initialSettings.tidalVolume,
+      vte: (weight * 6.5).toFixed(1),
+    };
+    setCurrentSettings(resetSettings);
+    setAbgValues({ pH: "", pCO2: "", pO2: "", HCO3: "" });
+    setAbgInterpretation("");
+    setSelectedMode(initialSettings.mode);
+    setAbgErrors({});
+    setShowValidation(false);
+  };
+
+  const handleModeChange = (mode) => {
+    setSelectedMode(mode);
+    const newSettings = {
+      ...currentSettings,
+      mode: mode,
+      mvent: calculateMvent(
+        currentSettings.tidalVolume,
+        currentSettings.respiratoryRate
+      ),
+    };
+    setCurrentSettings(newSettings);
+    setShowModeModal(false);
+  };
+
+  const openModeModal = () => {
+    setShowModeModal(true);
+  };
+
+  const closeModeModal = () => {
+    setShowModeModal(false);
+  };
+
+  const openSettingsModal = () => {
+    setTempSettings({ ...currentSettings });
+    setShowSettingsModal(true);
+  };
+
+  const closeSettingsModal = () => {
+    setShowSettingsModal(false);
+  };
+
+  const openAlarmModal = () => {
+    setShowAlarmModal(true);
+  };
+
+  const closeAlarmModal = () => {
+    setShowAlarmModal(false);
+  };
+
+  const saveSettings = () => {
+    const updatedSettings = {
+      ...tempSettings,
+      mvent: calculateMvent(
+        tempSettings.tidalVolume,
+        tempSettings.respiratoryRate
+      ),
+      vti: tempSettings.tidalVolume,
+    };
+    setCurrentSettings(updatedSettings);
+    setShowSettingsModal(false);
+  };
+
+  const handleSettingChange = (key, value) => {
+    const newTempSettings = {
+      ...tempSettings,
+      [key]: value,
+    };
+
+    if (key === "tidalVolume" || key === "respiratoryRate") {
+      newTempSettings.mvent = calculateMvent(
+        key === "tidalVolume" ? value : newTempSettings.tidalVolume,
+        key === "respiratoryRate" ? value : newTempSettings.respiratoryRate
+      );
+      if (key === "tidalVolume") {
+        newTempSettings.vti = value;
+      }
+    }
+
+    setTempSettings(newTempSettings);
+  };
+
+  // کامپوننت نمایش محدوده نرمال برای کودکان
+  const NormalRangeIndicator = ({ value, normalMin, normalMax, unit }) => {
+    const numValue = parseFloat(value);
+    if (!value) return null;
+
+    let status = "";
+    let color = "";
+
+    if (numValue < normalMin) {
+      status = "پایین";
+      color = "text-red-600";
+    } else if (numValue > normalMax) {
+      status = "بالا";
+      color = "text-yellow-600";
+    } else {
+      status = "نرمال";
+      color = "text-green-600";
+    }
+
+    return (
+      <div className={`text-xs mt-1 ${color}`}>
+        {status} (نرمال کودکان: {normalMin}-{normalMax} {unit})
+      </div>
+    );
+  };
 
   // مدهای ونتیلاتور برای کودکان
   const ventilatorModes = {
@@ -386,389 +833,6 @@ export default function PediatricVentilator({
         },
       ],
     },
-  };
-
-  // اعتبارسنجی مقادیر ABG برای کودکان
-  const validateABG = () => {
-    const { pH, pCO2, pO2, HCO3 } = abgValues;
-    const errors = {};
-    let isValid = true;
-
-    if (!pH) {
-      errors.pH = "مقدار pH الزامی است";
-      isValid = false;
-    } else {
-      const pHNum = parseFloat(pH);
-      if (pHNum < 6.9 || pHNum > 7.6) {
-        errors.pH = "مقدار pH باید بین 6.9 تا 7.6 باشد";
-        isValid = false;
-      } else if (pHNum < 7.35 || pHNum > 7.45) {
-        errors.pH = "مقدار pH خارج از محدوده نرمال است";
-      }
-    }
-
-    if (!pCO2) {
-      errors.pCO2 = "مقدار pCO2 الزامی است";
-      isValid = false;
-    } else {
-      const pCO2Num = parseFloat(pCO2);
-      if (pCO2Num < 25 || pCO2Num > 120) {
-        errors.pCO2 = "مقدار pCO2 باید بین 25 تا 120 mmHg باشد";
-        isValid = false;
-      } else if (pCO2Num < 35 || pCO2Num > 45) {
-        errors.pCO2 = "مقدار pCO2 خارج از محدوده نرمال است";
-      }
-    }
-
-    if (!pO2) {
-      errors.pO2 = "مقدار pO2 الزامی است";
-      isValid = false;
-    } else {
-      const pO2Num = parseFloat(pO2);
-      if (pO2Num < 40 || pO2Num > 100) {
-        errors.pO2 = "مقدار pO2 باید بین 40 تا 100 mmHg باشد";
-        isValid = false;
-      } else if (pO2Num < 80) {
-        errors.pO2 = "مقدار pO2 پایین است (هیپوکسمی)";
-      }
-    }
-
-    if (!HCO3) {
-      errors.HCO3 = "مقدار HCO3 الزامی است";
-      isValid = false;
-    } else {
-      const HCO3Num = parseFloat(HCO3);
-      if (HCO3Num < 2 || HCO3Num > 32) {
-        errors.HCO3 = "مقدار HCO3 باید بین 2 تا 32 mEq/L باشد";
-        isValid = false;
-      } else if (HCO3Num < 22 || HCO3Num > 26) {
-        errors.HCO3 = "مقدار HCO3 خارج از محدوده نرمال است";
-      }
-    }
-
-    setAbgErrors(errors);
-    setShowValidation(true);
-    return isValid;
-  };
-
-  // تفسیر ABG برای کودکان
-  const interpretABG = () => {
-    if (!validateABG()) {
-      return;
-    }
-
-    const { pH, pCO2, pO2, HCO3 } = abgValues;
-    const pHNum = parseFloat(pH);
-    const pCO2Num = parseFloat(pCO2);
-    const pO2Num = parseFloat(pO2);
-    const HCO3Num = parseFloat(HCO3);
-
-    let interpretation = "";
-   
-    
-    let newSettings = { ...currentSettings };
-
-    // تفسیر برای کودکان
-    if (pHNum < 7.35) {
-      if (pCO2Num > 45) {
-        interpretation = "اسیدوز تنفسی";
-        newSettings.respiratoryRate = Math.min(
-          35,
-          currentSettings.respiratoryRate + 3
-        );
-        if (selectedMode === "SIMV" || selectedMode === "PRVC") {
-          newSettings.tidalVolume = Math.min(
-            weight * 10,
-            parseFloat(currentSettings.tidalVolume) + 2
-          ).toFixed(1);
-        }
-      } else if (HCO3Num < 22) {
-        interpretation = "اسیدوز متابولیک";
-        newSettings.tidalVolume = Math.min(
-          weight * 10,
-          parseFloat(currentSettings.tidalVolume) + 3
-        ).toFixed(1);
-      }
-    } else if (pHNum > 7.45) {
-      if (pCO2Num < 35) {
-        interpretation = "آلکالوز تنفسی";
-        newSettings.respiratoryRate = Math.max(
-          12,
-          currentSettings.respiratoryRate - 3
-        );
-        if (selectedMode === "SIMV" || selectedMode === "PRVC") {
-          newSettings.tidalVolume = Math.max(
-            weight * 5,
-            parseFloat(currentSettings.tidalVolume) - 2
-          ).toFixed(1);
-        }
-      } else if (HCO3Num > 26) {
-        interpretation = "آلکالوز متابولیک";
-        newSettings.tidalVolume = Math.max(
-          weight * 5,
-          parseFloat(currentSettings.tidalVolume) - 2
-        ).toFixed(1);
-      }
-    } else {
-      interpretation = "ABG نرمال";
-    
-    }
-
-    // تنظیمات بر اساس اکسیژناسیون
-    if (pO2Num < 60) {
-      newSettings.fio2 = Math.min(80, currentSettings.fio2 + 25);
-      newSettings.peep = Math.min(12, currentSettings.peep + 3);
-      interpretation += " - هیپوکسمی شدید";
-    } else if (pO2Num < 80) {
-      newSettings.fio2 = Math.min(60, currentSettings.fio2 + 15);
-      newSettings.peep = Math.min(10, currentSettings.peep + 2);
-      interpretation += " - هیپوکسمی";
-    } else if (pO2Num > 100) {
-      newSettings.fio2 = Math.max(25, currentSettings.fio2 - 10);
-      interpretation += " - اکسیژناسیون خوب";
-    }
-
-    newSettings.mvent = calculateMvent(
-      newSettings.tidalVolume,
-      newSettings.respiratoryRate
-    );
-    newSettings.vti = newSettings.tidalVolume;
-
-    setAbgInterpretation(interpretation);
-    setCurrentSettings(newSettings);
-    setAlarmRanges(calculateAlarmRanges());
-  };
-
-  const handleAbgChange = (field, value) => {
-    setAbgValues((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-    if (abgErrors[field]) {
-      setAbgErrors((prev) => ({
-        ...prev,
-        [field]: "",
-      }));
-    }
-  };
-
-  const resetSettings = () => {
-    const resetSettings = {
-      ...initialSettings,
-      mvent: calculateMvent(
-        initialSettings.tidalVolume,
-        initialSettings.respiratoryRate
-      ),
-      vti: initialSettings.tidalVolume,
-      vte: (weight * 6.5).toFixed(1),
-    };
-    setCurrentSettings(resetSettings);
-    setAbgValues({ pH: "", pCO2: "", pO2: "", HCO3: "" });
-    setAbgInterpretation("");
-    setSelectedMode(initialSettings.mode);
-    setAbgErrors({});
-    setShowValidation(false);
-    setAlarmRanges(calculateAlarmRanges());
-  };
-
-  const handleModeChange = (mode) => {
-    setSelectedMode(mode);
-    const newSettings = {
-      ...currentSettings,
-      mode: mode,
-      mvent: calculateMvent(
-        currentSettings.tidalVolume,
-        currentSettings.respiratoryRate
-      ),
-    };
-    setCurrentSettings(newSettings);
-    setShowModeModal(false);
-    setAlarmRanges(calculateAlarmRanges());
-  };
-
-  const openModeModal = () => {
-    setShowModeModal(true);
-  };
-
-  const closeModeModal = () => {
-    setShowModeModal(false);
-  };
-
-  const openSettingsModal = () => {
-    setTempSettings({ ...currentSettings });
-    setShowSettingsModal(true);
-  };
-
-  const closeSettingsModal = () => {
-    setShowSettingsModal(false);
-  };
-
-  const openAlarmModal = () => {
-    setAlarmRanges(calculateAlarmRanges());
-    setShowAlarmModal(true);
-  };
-
-  const closeAlarmModal = () => {
-    setShowAlarmModal(false);
-  };
-
-  const saveSettings = () => {
-    const updatedSettings = {
-      ...tempSettings,
-      mvent: calculateMvent(
-        tempSettings.tidalVolume,
-        tempSettings.respiratoryRate
-      ),
-      vti: tempSettings.tidalVolume,
-    };
-    setCurrentSettings(updatedSettings);
-    setShowSettingsModal(false);
-    setAlarmRanges(calculateAlarmRanges());
-  };
-
-  const handleSettingChange = (key, value) => {
-    const newTempSettings = {
-      ...tempSettings,
-      [key]: value,
-    };
-
-    if (key === "tidalVolume" || key === "respiratoryRate") {
-      newTempSettings.mvent = calculateMvent(
-        key === "tidalVolume" ? value : newTempSettings.tidalVolume,
-        key === "respiratoryRate" ? value : newTempSettings.respiratoryRate
-      );
-      if (key === "tidalVolume") {
-        newTempSettings.vti = value;
-      }
-    }
-
-    setTempSettings(newTempSettings);
-  };
-
-  // کامپوننت نمایش محدوده نرمال برای کودکان
-  const NormalRangeIndicator = ({ value, normalMin, normalMax, unit }) => {
-    const numValue = parseFloat(value);
-    if (!value) return null;
-
-    let status = "";
-    let color = "";
-
-    if (numValue < normalMin) {
-      status = "پایین";
-      color = "text-red-600";
-    } else if (numValue > normalMax) {
-      status = "بالا";
-      color = "text-yellow-600";
-    } else {
-      status = "نرمال";
-      color = "text-green-600";
-    }
-
-    return (
-      <div className={`text-xs mt-1 ${color}`}>
-        {status} (نرمال کودکان: {normalMin}-{normalMax} {unit})
-      </div>
-    );
-  };
-
-  // کامپوننت مودال هشدار
-  const AlarmModal = ({ show, onClose, alarmRanges }) => {
-    if (!show) return null;
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4">
-          <div className="bg-blue-600 text-white rounded-t-2xl p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold">Alarm Profile - کودکان</h2>
-              </div>
-              <button
-                onClick={onClose}
-                className="text-white hover:text-gray-200 transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <div className="p-6">
-            <div className="space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <h3 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
-                  Respiratory Rate (RR)
-                </h3>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-red-100 rounded-lg p-2">
-                    <p className="text-xs text-red-600">پایین</p>
-                    <p className="font-bold text-red-800">{alarmRanges.rr.low}</p>
-                  </div>
-                  <div className="bg-green-100 rounded-lg p-2">
-                    <p className="text-xs text-green-600">فعلی</p>
-                    <p className="font-bold text-green-800">{alarmRanges.rr.current}</p>
-                  </div>
-                  <div className="bg-yellow-100 rounded-lg p-2">
-                    <p className="text-xs text-yellow-600">بالا</p>
-                    <p className="font-bold text-yellow-800">{alarmRanges.rr.high}</p>
-                  </div>
-                </div>
-                <p className="text-xs text-blue-600 mt-2 text-center">
-                  واحد: {alarmRanges.rr.unit}
-                </p>
-              </div>
-
-              <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
-                <h3 className="font-bold text-teal-800 mb-2 flex items-center gap-2">
-                  تهویه دقیقه‌ای (MVent)
-                </h3>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-red-100 rounded-lg p-2">
-                    <p className="text-xs text-red-600">پایین</p>
-                    <p className="font-bold text-red-800">{alarmRanges.mvent.low}</p>
-                  </div>
-                  <div className="bg-green-100 rounded-lg p-2">
-                    <p className="text-xs text-green-600">فعلی</p>
-                    <p className="font-bold text-green-800">{alarmRanges.mvent.current}</p>
-                  </div>
-                  <div className="bg-yellow-100 rounded-lg p-2">
-                    <p className="text-xs text-yellow-600">بالا</p>
-                    <p className="font-bold text-yellow-800">{alarmRanges.mvent.high}</p>
-                  </div>
-                </div>
-                <p className="text-xs text-teal-600 mt-2 text-center">
-                  واحد: {alarmRanges.mvent.unit}
-                </p>
-              </div>
-
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                <h3 className="font-bold text-green-800 mb-2 flex items-center gap-2">
-                  PEEP
-                </h3>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-red-100 rounded-lg p-2">
-                    <p className="text-xs text-red-600">پایین</p>
-                    <p className="font-bold text-red-800">{alarmRanges.peep.low}</p>
-                  </div>
-                  <div className="bg-green-100 rounded-lg p-2">
-                    <p className="text-xs text-green-600">فعلی</p>
-                    <p className="font-bold text-green-800">{alarmRanges.peep.current}</p>
-                  </div>
-                  <div className="bg-yellow-100 rounded-lg p-2">
-                    <p className="text-xs text-yellow-600">بالا</p>
-                    <p className="font-bold text-yellow-800">{alarmRanges.peep.high}</p>
-                  </div>
-                </div>
-                <p className="text-xs text-green-600 mt-2 text-center">
-                  واحد: {alarmRanges.peep.unit}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
   };
 
   // تابع برای دریافت نام بیماری به فارسی
@@ -938,9 +1002,8 @@ export default function PediatricVentilator({
                   <h2 className="text-xl font-bold text-blue-800">
                     مانیتور ونتیلاتور - کودکان
                   </h2>
-                
-<div className="flex items-center gap-2">
-   <Tooltip text="الارم" position="top" bgColor="bg-red-600" textColor="text-white">
+                  <div className="flex items-center gap-2">
+                    <Tooltip text="الارم" position="top" bgColor="bg-red-600" textColor="text-white">
                       <button 
                         onClick={openAlarmModal}
                         className="text-blue-600 hover:text-blue-800 transition-colors p-2 rounded-lg hover:bg-blue-100"
@@ -948,97 +1011,91 @@ export default function PediatricVentilator({
                         <PiBellLight className="w-8 h-8 bg-blue-500 hover:bg-blue-600 rounded-lg p-1 text-white" />
                       </button>
                     </Tooltip>
-  
-  <button
-    onClick={openSettingsModal}
-    className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-4 py-2 rounded-lg transition-all flex items-center gap-2 shadow-md"
-  >
-    <svg
-      className="w-4 h-4"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-      />
-    </svg>
-    {currentSettings.mode}
-  </button>
-</div>
+                    <button
+                      onClick={openSettingsModal}
+                      className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-4 py-2 rounded-lg transition-all flex items-center gap-2 shadow-md"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        />
+                      </svg>
+                      {currentSettings.mode}
+                    </button>
+                  </div>
                 </div>
 
-                {/* بخش مانیتور  */}
+                {/* بخش مانیتور با آلارم - تمام پارامترها */}
                 <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 mb-4 border border-blue-100 shadow-inner">
+                 
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                     {/* PIP */}
-                    <div className="bg-gradient-to-br from-indigo-100 to-indigo-200 rounded-lg p-3 border border-indigo-300 shadow-sm">
-                      <div className="text-center">
-                        <h3 className="text-indigo-700 text-xs mb-1 font-semibold">PIP</h3>
-                        <p className="text-xl font-bold text-indigo-900">
-                          {currentSettings.pip}
-                        </p>
-                        <p className="text-indigo-600 text-xs">cmH₂O</p>
-                      </div>
-                    </div>
+                    <AlarmIndicator
+                      label="PIP"
+                      value={currentSettings.pip}
+                      low={alarmRanges.pip.low}
+                      high={alarmRanges.pip.high}
+                      unit="cmH₂O"
+                      current={alarmRanges.pip.current}
+                    />
 
                     {/* FiO2 */}
-                    <div className="bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg p-3 border border-purple-300 shadow-sm">
-                      <div className="text-center">
-                        <h3 className="text-purple-700 text-xs mb-1 font-semibold">FiO₂</h3>
-                        <p className="text-xl font-bold text-purple-900">
-                          {currentSettings.fio2}%
-                        </p>
-                        <p className="text-purple-600 text-xs">%</p>
-                      </div>
-                    </div>
+                    <AlarmIndicator
+                      label="FiO₂"
+                      value={currentSettings.fio2}
+                      low={alarmRanges.fio2.low}
+                      high={alarmRanges.fio2.high}
+                      unit="%"
+                      current={alarmRanges.fio2.current}
+                    />
 
                     {/* PEEP */}
-                    <div className="bg-gradient-to-br from-red-100 to-red-200 rounded-lg p-3 border border-red-300 shadow-sm">
-                      <div className="text-center">
-                        <h3 className="text-red-700 text-xs mb-1 font-semibold">PEEP</h3>
-                        <p className="text-xl font-bold text-red-900">
-                          {currentSettings.peep}
-                        </p>
-                        <p className="text-red-600 text-xs">cmH₂O</p>
-                      </div>
-                    </div>
+                    <AlarmIndicator
+                      label="PEEP"
+                      value={currentSettings.peep}
+                      low={alarmRanges.peep.low}
+                      high={alarmRanges.peep.high}
+                      unit="cmH₂O"
+                      current={alarmRanges.peep.current}
+                    />
 
                     {/* MVent */}
-                    <div className="bg-gradient-to-br from-teal-100 to-teal-200 rounded-lg p-3 border border-teal-300 shadow-sm">
-                      <div className="text-center">
-                        <h3 className="text-teal-700 text-xs mb-1 font-semibold">MVent</h3>
-                        <p className="text-xl font-bold text-teal-900">
-                          {currentSettings.mvent}
-                        </p>
-                        <p className="text-teal-600 text-xs">L/min</p>
-                      </div>
-                    </div>
+                    <AlarmIndicator
+                      label="MVent"
+                      value={currentSettings.mvent}
+                      low={alarmRanges.mvent.low}
+                      high={alarmRanges.mvent.high}
+                      unit="L/min"
+                      current={alarmRanges.mvent.current}
+                    />
 
                     {/* VTi */}
-                    <div className="bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg p-3 border border-blue-300 shadow-sm">
-                      <div className="text-center">
-                        <h3 className="text-blue-700 text-xs mb-1 font-semibold">VTi</h3>
-                        <p className="text-xl font-bold text-blue-900">
-                          {currentSettings.vti}
-                        </p>
-                        <p className="text-blue-600 text-xs">ml</p>
-                      </div>
-                    </div>
+                    <AlarmIndicator
+                      label="VTi"
+                      value={currentSettings.vti}
+                      low={alarmRanges.tv.low}
+                      high={alarmRanges.tv.high}
+                      unit="ml"
+                      current={alarmRanges.tv.current}
+                    />
 
-                    {/* VTe */}
-                    <div className="bg-gradient-to-br from-green-100 to-green-200 rounded-lg p-3 border border-green-300 shadow-sm">
-                      <div className="text-center">
-                        <h3 className="text-green-700 text-xs mb-1 font-semibold">VTe</h3>
-                        <p className="text-xl font-bold text-green-900">
-                          {currentSettings.vte}
-                        </p>
-                        <p className="text-green-600 text-xs">ml</p>
-                      </div>
-                    </div>
+                    {/* RR */}
+                    <AlarmIndicator
+                      label="RR"
+                      value={currentSettings.respiratoryRate}
+                      low={alarmRanges.rr.low}
+                      high={alarmRanges.rr.high}
+                      unit="/min"
+                      current={alarmRanges.rr.current}
+                    />
                   </div>
                 </div>
 
@@ -1307,7 +1364,7 @@ export default function PediatricVentilator({
                         {initialSettings.respiratoryRate !==
                           currentSettings.respiratoryRate && (
                           <p>
-                            • میزان تنفس: {initialSettings.respiratoryRate} →{" "}
+                            • RR : {initialSettings.respiratoryRate} →{" "}
                             <strong>{currentSettings.respiratoryRate}</strong>{" "}
                             /min
                           </p>
@@ -1369,7 +1426,7 @@ export default function PediatricVentilator({
         isInfant={false}
       />
 
-      {/* مودال هشدار */}
+      {/* مودال هشدار - فقط سه پارامتر اصلی */}
       <AlarmModal
         show={showAlarmModal}
         onClose={closeAlarmModal}
