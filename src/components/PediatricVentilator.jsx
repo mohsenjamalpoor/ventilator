@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import ModeSelectionModal from "./ModeSelectionModal";
 import SettingsModal from "./SettingsModal";
 import { PiBellLight } from "react-icons/pi";
+import Tooltip from "./Tooltip";
 
 // آبجکت تنظیمات اولیه
 const initialSettingsConfig = {
@@ -174,6 +175,7 @@ export default function PediatricVentilator({
         return baseSettings;
     }
   };
+
 
   // محاسبه تهویه دقیقه‌ای
   const calculateMvent = (tv, rr) => {
@@ -936,33 +938,37 @@ export default function PediatricVentilator({
                   <h2 className="text-xl font-bold text-blue-800">
                     مانیتور ونتیلاتور - کودکان
                   </h2>
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={openAlarmModal}
-                      className="text-blue-600 hover:text-blue-800 transition-colors p-2 rounded-lg hover:bg-blue-100"
-                    >
-                      <PiBellLight className="w-8 h-8 bg-blue-500 hover:bg-blue-600 rounded-lg p-1 text-white" />
-                    </button>
-                    <button
-                      onClick={openSettingsModal}
-                      className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-4 py-2 rounded-lg transition-all flex items-center gap-2 shadow-md"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                
+<div className="flex items-center gap-2">
+   <Tooltip text="الارم" position="top" bgColor="bg-red-600" textColor="text-white">
+                      <button 
+                        onClick={openAlarmModal}
+                        className="text-blue-600 hover:text-blue-800 transition-colors p-2 rounded-lg hover:bg-blue-100"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                        />
-                      </svg>
-                      {currentSettings.mode}
-                    </button>
-                  </div>
+                        <PiBellLight className="w-8 h-8 bg-blue-500 hover:bg-blue-600 rounded-lg p-1 text-white" />
+                      </button>
+                    </Tooltip>
+  
+  <button
+    onClick={openSettingsModal}
+    className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-4 py-2 rounded-lg transition-all flex items-center gap-2 shadow-md"
+  >
+    <svg
+      className="w-4 h-4"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+      />
+    </svg>
+    {currentSettings.mode}
+  </button>
+</div>
                 </div>
 
                 {/* بخش مانیتور  */}
