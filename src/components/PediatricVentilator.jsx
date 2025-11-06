@@ -10,7 +10,7 @@ const initialSettingsConfig = {
   baseSettings: {
     tidalVolume: (weight) => (weight * 7).toFixed(1),
     respiratoryRate: 20,
-    fio2: 35,
+    fio2: 40,
     peep: 5,
     ieRatio: "1:2",
     flowRate: 25,
@@ -26,7 +26,7 @@ const initialSettingsConfig = {
     reduced_consciousness: {
       mode: "SIMV",
       respiratoryRate: 25,
-      tidalVolume: (weight) => (weight * 8).toFixed(1),
+      tidalVolume: (weight) => (weight * 6).toFixed(1),
       peep: 5,
       pressureSupport: 15,
     },
@@ -192,6 +192,9 @@ export default function PediatricVentilator({
     vti: initialSettings.tidalVolume,
     vte: (weight * 6.5).toFixed(1),
   });
+
+  // state جدید برای ذخیره تنظیمات قبل از تفسیر ABG
+  const [settingsBeforeABG, setSettingsBeforeABG] = useState({ ...currentSettings });
 
   const [selectedMode, setSelectedMode] = useState(initialSettings.mode);
   const [showModeModal, setShowModeModal] = useState(false);
@@ -391,6 +394,7 @@ export default function PediatricVentilator({
     };
     
     setCurrentSettings(resetSettings);
+    setSettingsBeforeABG(resetSettings);
     setSelectedMode(initialSettings.mode);
     setAlarmRanges(calculateAlarmRanges());
     
@@ -409,8 +413,19 @@ export default function PediatricVentilator({
       ),
     };
     setCurrentSettings(newSettings);
+    setSettingsBeforeABG(newSettings);
     setShowModeModal(false);
     setAlarmRanges(calculateAlarmRanges());
+  };
+
+  // تابع برای به‌روزرسانی تنظیمات از ABG
+  const handleSettingsUpdateFromABG = (newSettings) => {
+    setCurrentSettings(newSettings);
+  };
+
+  // تابع برای ذخیره تنظیمات قبل از تفسیر ABG
+  const handleSettingsBeforeABG = (settings) => {
+    setSettingsBeforeABG(settings);
   };
 
   const openModeModal = () => {
@@ -449,6 +464,7 @@ export default function PediatricVentilator({
       vti: tempSettings.tidalVolume,
     };
     setCurrentSettings(updatedSettings);
+    setSettingsBeforeABG(updatedSettings);
     setShowSettingsModal(false);
     setAlarmRanges(calculateAlarmRanges());
   };
@@ -954,8 +970,9 @@ export default function PediatricVentilator({
                 weight={weight}
                 selectedMode={selectedMode}
                 currentSettings={currentSettings}
-                initialSettings={initialSettings}
-                onSettingsUpdate={setCurrentSettings}
+                settingsBeforeABG={settingsBeforeABG}
+                onSettingsUpdate={handleSettingsUpdateFromABG}
+                onSettingsBeforeUpdate={handleSettingsBeforeABG}
                 resetTrigger={resetTrigger}
               />
             </div>

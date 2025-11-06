@@ -1,8 +1,7 @@
-// ABGInterpretation.js
+
 import React, { useState, useEffect } from "react";
 import { MdCheckCircleOutline } from "react-icons/md";
 
-// کامپوننت نمایش محدوده نرمال برای کودکان
 const NormalRangeIndicator = ({ value, normalMin, normalMax, unit }) => {
   const numValue = parseFloat(value);
   if (!value) return null;
@@ -28,13 +27,14 @@ const NormalRangeIndicator = ({ value, normalMin, normalMax, unit }) => {
   );
 };
 
-// کامپوننت اصلی تفسیر ABG
+
 const ABGInterpretation = ({
   weight,
   selectedMode,
   currentSettings,
+  settingsBeforeABG,
   onSettingsUpdate,
-  initialSettings,
+  onSettingsBeforeUpdate,
   resetTrigger
 }) => {
   // state های مربوط به ABG
@@ -47,6 +47,7 @@ const ABGInterpretation = ({
   const [abgInterpretation, setAbgInterpretation] = useState("");
   const [abgErrors, setAbgErrors] = useState({});
   const [showValidation, setShowValidation] = useState(false);
+  const [appliedChanges, setAppliedChanges] = useState([]);
 
   // اثر برای بازنشانی state های داخلی وقتی تنظیمات اصلی بازنشانی می‌شوند
   useEffect(() => {
@@ -60,7 +61,7 @@ const ABGInterpretation = ({
     return ((parseFloat(tv) * parseFloat(rr)) / 1000).toFixed(2);
   };
 
-  // اعتبارسنجی مقادیر ABG برای کودکان
+  // اعتبارسنجی مقادیر ABG  
   const validateABG = () => {
     const { pH, pCO2, pO2, HCO3 } = abgValues;
     const errors = {};
@@ -123,10 +124,15 @@ const ABGInterpretation = ({
     return isValid;
   };
 
-  // تفسیر ABG برای کودکان
+  // تفسیر ABG  
   const interpretABG = () => {
     if (!validateABG()) {
       return;
+    }
+
+    // ذخیره تنظیمات فعلی قبل از اعمال تغییرات
+    if (onSettingsBeforeUpdate) {
+      onSettingsBeforeUpdate(currentSettings);
     }
 
     const { pH, pCO2, pO2, HCO3 } = abgValues;
@@ -136,9 +142,11 @@ const ABGInterpretation = ({
     const HCO3Num = parseFloat(HCO3);
 
     let interpretation = "";
+    
+    // استفاده از تنظیمات فعلی برای محاسبه تغییرات
     let newSettings = { ...currentSettings };
 
-    // تفسیر برای کودکان
+    // تفسیر  
     if (pHNum < 7.35) {
       if (pCO2Num > 45) {
         interpretation = "اسیدوز تنفسی";
@@ -192,7 +200,7 @@ const ABGInterpretation = ({
       newSettings.fio2 = Math.min(60, parseInt(currentSettings.fio2) + 15);
       newSettings.peep = Math.min(10, parseInt(currentSettings.peep) + 2);
       interpretation += " - هیپوکسمی";
-    } else if (pO2Num > 100) {
+    } else if (pO2Num > 90 || pO2Num < 100) {
       newSettings.fio2 = Math.max(25, parseInt(currentSettings.fio2) - 10);
       interpretation += " - اکسیژناسیون خوب";
     }
@@ -206,10 +214,67 @@ const ABGInterpretation = ({
 
     setAbgInterpretation(interpretation);
     
+    // محاسبه تغییرات اعمال شده
+    calculateAppliedChanges(currentSettings, newSettings);
+    
     // ارسال تنظیمات جدید به کامپوننت والد
     if (onSettingsUpdate) {
       onSettingsUpdate(newSettings);
     }
+  };
+
+  // محاسبه تغییرات اعمال شده
+  const calculateAppliedChanges = (beforeSettings, afterSettings) => {
+    const changes = [];
+    
+    if (beforeSettings && afterSettings) {
+      if (parseInt(beforeSettings.respiratoryRate) !== parseInt(afterSettings.respiratoryRate)) {
+        changes.push({
+          label: "RR",
+          from: beforeSettings.respiratoryRate,
+          to: afterSettings.respiratoryRate,
+          unit: "/min"
+        });
+      }
+      
+      if (parseFloat(beforeSettings.tidalVolume) !== parseFloat(afterSettings.tidalVolume)) {
+        changes.push({
+          label: "TV",
+          from: beforeSettings.tidalVolume,
+          to: afterSettings.tidalVolume,
+          unit: "ml"
+        });
+      }
+      
+      if (parseInt(beforeSettings.fio2) !== parseInt(afterSettings.fio2)) {
+        changes.push({
+          label: "FiO₂",
+          from: beforeSettings.fio2,
+          to: afterSettings.fio2,
+          unit: "%"
+        });
+      }
+      
+      if (parseInt(beforeSettings.peep) !== parseInt(afterSettings.peep)) {
+        changes.push({
+          label: "PEEP",
+          from: beforeSettings.peep,
+          to: afterSettings.peep,
+          unit: "cmH₂O"
+        });
+      }
+      
+      if (parseFloat(beforeSettings.mvent) !== parseFloat(afterSettings.mvent)) {
+        changes.push({
+          label: "MVent",
+          from: beforeSettings.mvent,
+          to: afterSettings.mvent,
+          unit: "L/min"
+        });
+      }
+    }
+    
+    setAppliedChanges(changes);
   };
 
   const handleAbgChange = (field, value) => {
@@ -235,63 +300,8 @@ const ABGInterpretation = ({
     setAbgInterpretation("");
     setAbgErrors({});
     setShowValidation(false);
+    setAppliedChanges([]);
   };
-
-  // محاسبه تغییرات اعمال شده
-  const getAppliedChanges = () => {
-    const changes = [];
-    
-    if (initialSettings && currentSettings) {
-      if (parseInt(initialSettings.respiratoryRate) !== parseInt(currentSettings.respiratoryRate)) {
-        changes.push({
-          label: "میزان تنفس",
-          from: initialSettings.respiratoryRate,
-          to: currentSettings.respiratoryRate,
-          unit: "/min"
-        });
-      }
-      
-      if (parseFloat(initialSettings.tidalVolume) !== parseFloat(currentSettings.tidalVolume)) {
-        changes.push({
-          label: "حجم جاری (TV)",
-          from: initialSettings.tidalVolume,
-          to: currentSettings.tidalVolume,
-          unit: "ml"
-        });
-      }
-      
-      if (parseInt(initialSettings.fio2) !== parseInt(currentSettings.fio2)) {
-        changes.push({
-          label: "FiO₂",
-          from: initialSettings.fio2,
-          to: currentSettings.fio2,
-          unit: "%"
-        });
-      }
-      
-      if (parseInt(initialSettings.peep) !== parseInt(currentSettings.peep)) {
-        changes.push({
-          label: "PEEP",
-          from: initialSettings.peep,
-          to: currentSettings.peep,
-          unit: "cmH₂O"
-        });
-      }
-      
-      if (parseFloat(initialSettings.mvent) !== parseFloat(currentSettings.mvent)) {
-        changes.push({
-          label: "تهویه دقیقه‌ای (MVent)",
-          from: initialSettings.mvent,
-          to: currentSettings.mvent,
-          unit: "L/min"
-        });
-      }
-    }
-    
-    return changes;
-  };
-
-  const appliedChanges = getAppliedChanges();
 
   return (
     <div className="bg-white rounded-2xl shadow-lg p-6">
@@ -324,7 +334,7 @@ const ABGInterpretation = ({
                 : "border-gray-300"
             }`}
             placeholder="7.40"
-            dir="ltr" // اضافه کردن جهت LTR برای اعداد
+            dir="ltr" 
           />
           {abgErrors.pH && (
             <p className="text-red-500 text-xs mt-1 text-right">
@@ -355,7 +365,7 @@ const ABGInterpretation = ({
                 : "border-gray-300"
             }`}
             placeholder="40"
-            dir="ltr" // اضافه کردن جهت LTR برای اعداد
+            dir="ltr"   
           />
           {abgErrors.pCO2 && (
             <p className="text-red-500 text-xs mt-1 text-right">
@@ -386,7 +396,7 @@ const ABGInterpretation = ({
                 : "border-gray-300"
             }`}
             placeholder="80"
-            dir="ltr" // اضافه کردن جهت LTR برای اعداد
+            dir="ltr"
           />
           {abgErrors.pO2 && (
             <p className="text-red-500 text-xs mt-1 text-right">
@@ -417,7 +427,7 @@ const ABGInterpretation = ({
                 : "border-gray-300"
             }`}
             placeholder="24"
-            dir="ltr" // اضافه کردن جهت LTR برای اعداد
+            dir="ltr" 
           />
           {abgErrors.HCO3 && (
             <p className="text-red-500 text-xs mt-1 text-right">
