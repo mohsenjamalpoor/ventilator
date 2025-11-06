@@ -651,7 +651,7 @@ export default function PediatricVentilator({
               <p className="text-orange-600 text-sm">نوع درگیری</p>
               <p className="text-xl font-bold text-orange-800">
                 {lungInvolvement === "normal" ? "ریه نرمال" : 
-                 lungInvolvement === "obstructive" ? "انسدادی" : "محدودکننده"}
+                 lungInvolvement === "obstructive" ? "Obstructive" : "Restrictive"}
               </p>
             </div>
           </div>

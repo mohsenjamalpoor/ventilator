@@ -1,5 +1,6 @@
 // ABGInterpretation.js
 import React, { useState, useEffect } from "react";
+import { MdCheckCircleOutline } from "react-icons/md";
 
 // کامپوننت نمایش محدوده نرمال برای کودکان
 const NormalRangeIndicator = ({ value, normalMin, normalMax, unit }) => {
@@ -482,19 +483,7 @@ const ABGInterpretation = ({
           {appliedChanges.length > 0 && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
               <h3 className="font-bold text-green-800 mb-2 flex items-center gap-2">
-                <svg 
-                  className="w-5 h-5" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
-                  />
-                </svg>
+            <MdCheckCircleOutline size={20}/>
                 📝 تغییرات اعمال شده:
               </h3>
               <div className="space-y-2">
@@ -540,18 +529,7 @@ const ABGInterpretation = ({
         </div>
       )}
 
-      {/* راهنمای مقادیر نرمال */}
-      {!abgInterpretation && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-          <h3 className="font-bold text-gray-700 mb-2 text-right">مقادیر نرمال کودکان:</h3>
-          <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 text-right">
-            <div>pH: <span dir="ltr" className="direction-ltr">7.35 - 7.45</span></div>
-            <div>pCO₂: <span dir="ltr" className="direction-ltr">35 - 45 mmHg</span></div>
-            <div>pO₂: <span dir="ltr" className="direction-ltr">80 - 100 mmHg</span></div>
-            <div>HCO₃: <span dir="ltr" className="direction-ltr">22 - 26 mEq/L</span></div>
-          </div>
-        </div>
-      )}
+   
     </div>
   );
 };
