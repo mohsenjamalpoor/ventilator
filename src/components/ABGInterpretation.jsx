@@ -1,4 +1,4 @@
-// ABGInterpretation.js
+
 import React, { useState, useEffect } from "react";
 import { MdCheckCircleOutline } from "react-icons/md";
 
@@ -335,7 +335,7 @@ const ABGInterpretation = ({
                 : "border-gray-300"
             }`}
             placeholder="7.40"
-            dir="ltr" // اضافه کردن جهت LTR برای اعداد
+            dir="ltr" 
           />
           {abgErrors.pH && (
             <p className="text-red-500 text-xs mt-1 text-right">
@@ -366,7 +366,7 @@ const ABGInterpretation = ({
                 : "border-gray-300"
             }`}
             placeholder="40"
-            dir="ltr" // اضافه کردن جهت LTR برای اعداد
+            dir="ltr" 
           />
           {abgErrors.pCO2 && (
             <p className="text-red-500 text-xs mt-1 text-right">
@@ -397,7 +397,7 @@ const ABGInterpretation = ({
                 : "border-gray-300"
             }`}
             placeholder="80"
-            dir="ltr" // اضافه کردن جهت LTR برای اعداد
+            dir="ltr" 
           />
           {abgErrors.pO2 && (
             <p className="text-red-500 text-xs mt-1 text-right">
@@ -428,7 +428,7 @@ const ABGInterpretation = ({
                 : "border-gray-300"
             }`}
             placeholder="24"
-            dir="ltr" // اضافه کردن جهت LTR برای اعداد
+            dir="ltr" 
           />
           {abgErrors.HCO3 && (
             <p className="text-red-500 text-xs mt-1 text-right">

@@ -18,43 +18,135 @@ const SettingsModal = ({
   // پارامترهای کاملاً جدا برای هر مد
   const modeParameters = {
     SIMV: [
-      { key: "tidalVolume", label: "حجم جاری", unit: "ml", min: 10, max: 350, step: 10 },
-      { key: "respiratoryRate", label: "میزان تنفس", unit: "/min", min: 1, max: 60, step: 1 },
+      {
+        key: "tidalVolume",
+        label: "حجم جاری",
+        unit: "ml",
+        min: 10,
+        max: 350,
+        step: 10,
+      },
+      {
+        key: "respiratoryRate",
+        label: "میزان تنفس",
+        unit: "/min",
+        min: 1,
+        max: 60,
+        step: 1,
+      },
       { key: "peep", label: "PEEP", unit: "cmH₂O", min: 0, max: 50, step: 1 },
       { key: "ti", label: "Ti", unit: "sec", min: 0.5, max: 3.0, step: 0.1 },
-      { key: "ieRatio", label: "نسبت I:E", type: "select", options: ["1:1", "1:1.5", "1:2", "1:2.5", "1:3", "1:3.5", "1:4"] },
+      {
+        key: "ieRatio",
+        label: "نسبت I:E",
+        type: "ieratio",
+        iMin: 0.1,
+        iMax: 4.0,
+        iStep: 0.1,
+        eMin: 0.1,
+        eMax: 4.0,
+        eStep: 0.1,
+      },
       { key: "fio2", label: "FiO₂", unit: "%", min: 21, max: 100, step: 1 },
-      { key: "trigger", label: "Trigger", unit: "cmH₂O", min: -20, max: 10, step: 1 },
-      { key: "pressureSupport", label: "حمایت فشاری", unit: "cmH₂O", min: 0, max: 80, step: 1 },
-     
+      {
+        key: "trigger",
+        label: "Trigger",
+        unit: "cmH₂O",
+        min: -20,
+        max: 10,
+        step: 1,
+      },
+      {
+        key: "pressureSupport",
+        label: "حمایت فشاری",
+        unit: "cmH₂O",
+        min: 0,
+        max: 80,
+        step: 1,
+      },
     ],
     PRVC: [
-      { key: "tidalVolume", label: "حجم جاری", unit: "ml", min: 200, max: 1000, step: 10 },
-      { key: "respiratoryRate", label: "میزان تنفس", unit: "/min", min: 1, max: 60, step: 1 },
+      {
+        key: "tidalVolume",
+        label: "حجم جاری",
+        unit: "ml",
+        min: 200,
+        max: 1000,
+        step: 10,
+      },
+      {
+        key: "respiratoryRate",
+        label: "میزان تنفس",
+        unit: "/min",
+        min: 1,
+        max: 60,
+        step: 1,
+      },
       { key: "peep", label: "PEEP", unit: "cmH₂O", min: 0, max: 20, step: 1 },
       { key: "ti", label: "Ti", unit: "sec", min: 0.5, max: 3.0, step: 0.1 },
-      { key: "ieRatio", label: "نسبت I:E", type: "select", options: ["1:1", "1:1.5", "1:2", "1:2.5", "1:3", "1:3.5", "1:4"] },
+      {
+        key: "ieRatio",
+        label: "نسبت I:E",
+        type: "ieratio",
+        iMin: 0.1,
+        iMax: 4.0,
+        iStep: 0.1,
+        eMin: 0.1,
+        eMax: 4.0,
+        eStep: 0.1,
+      },
       { key: "fio2", label: "FiO₂", unit: "%", min: 21, max: 100, step: 1 },
-     
     ],
     CPAP: [
       { key: "peep", label: "PEEP", unit: "cmH₂O", min: 3, max: 15, step: 1 },
       { key: "fio2", label: "FiO₂", unit: "%", min: 21, max: 100, step: 1 },
-      { key: "pressureSupport", label: "حمایت فشاری", unit: "cmH₂O", min: 5, max: 25, step: 1 },
-       { key: "trigger", label: "Trigger", unit: "cmH₂O", min: 0, max: 10, step: 0.1 },
-    ]
+      {
+        key: "pressureSupport",
+        label: "حمایت فشاری",
+        unit: "cmH₂O",
+        min: 5,
+        max: 25,
+        step: 1,
+      },
+      {
+        key: "trigger",
+        label: "Trigger",
+        unit: "cmH₂O",
+        min: 0,
+        max: 10,
+        step: 0.1,
+      },
+    ],
   };
 
   const parameters = modeParameters[currentMode.name] || modeParameters.SIMV;
 
   const getValue = (param) => {
-    return tempSettings[param.key] !== undefined ? tempSettings[param.key] : param.min;
+    return tempSettings[param.key] !== undefined
+      ? tempSettings[param.key]
+      : param.min;
   };
+
+  // تابع برای مدیریت تغییر نسبت I:E
+  const handleIERatioChange = (iValue, eValue) => {
+    onSettingChange("ieRatio", `${iValue}:${eValue}`);
+  };
+
+  // تابع برای استخراج مقادیر I و E از رشته ذخیره شده
+  const getIERatioValues = () => {
+    const ieValue = getValue({ key: "ieRatio" });
+    if (ieValue && typeof ieValue === "string" && ieValue.includes(":")) {
+      const [i, e] = ieValue.split(":").map(Number);
+      return { i: i || 1, e: e || 1 };
+    }
+    return { i: 1, e: 1 }; // مقادیر پیش فرض
+  };
+
+  const { i: currentI, e: currentE } = getIERatioValues();
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-        
         {/* هدر مودال */}
         <div className="bg-teal-500 text-white p-6">
           <div className="flex items-center justify-between">
@@ -68,13 +160,10 @@ const SettingsModal = ({
               ×
             </button>
           </div>
-          
         </div>
 
         {/* محتوای مودال */}
         <div className="p-6 max-h-[60vh] overflow-y-auto">
-         
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {parameters.map((param) => (
               <div key={param.key} className="space-y-2">
@@ -97,12 +186,94 @@ const SettingsModal = ({
                       </option>
                     ))}
                   </select>
+                ) : param.type === "ieratio" ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <label className="block text-xs text-gray-500 mb-1">
+                          Expiratory (E)
+                        </label>
+                        <input
+                          type="number"
+                          value={currentE}
+                          onChange={(e) =>
+                            handleIERatioChange(
+                              currentI,
+                              parseFloat(e.target.value)
+                            )
+                          }
+                          min={param.eMin}
+                          max={param.eMax}
+                          step={param.eStep}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-left"
+                        />
+                        <input
+                          type="range"
+                          value={currentE}
+                          onChange={(e) =>
+                            handleIERatioChange(
+                              currentI,
+                              parseFloat(e.target.value)
+                            )
+                          }
+                          min={param.eMin}
+                          max={param.eMax}
+                          step={param.eStep}
+                          className="w-full mt-1"
+                        />
+                      </div>
+                      <div className="text-lg font-bold text-gray-600 mt-5">
+                        :
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-xs text-gray-500 mb-1">
+                          Inspiratory (I)
+                        </label>
+                        <input
+                          type="number"
+                          value={currentI}
+                          onChange={(e) =>
+                            handleIERatioChange(
+                              parseFloat(e.target.value),
+                              currentE
+                            )
+                          }
+                          min={param.iMin}
+                          max={param.iMax}
+                          step={param.iStep}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-left"
+                        />
+                        <input
+                          type="range"
+                          value={currentI}
+                          onChange={(e) =>
+                            handleIERatioChange(
+                              parseFloat(e.target.value),
+                              currentE
+                            )
+                          }
+                          min={param.iMin}
+                          max={param.iMax}
+                          step={param.iStep}
+                          className="w-full mt-1"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>
+                        نسبت فعلی: {currentI}:{currentE}
+                      </span>
+                      <span>گام: 0.1</span>
+                    </div>
+                  </div>
                 ) : (
                   <div className="space-y-2">
                     <input
                       type="number"
                       value={getValue(param)}
-                      onChange={(e) => onSettingChange(param.key, e.target.value)}
+                      onChange={(e) =>
+                        onSettingChange(param.key, e.target.value)
+                      }
                       min={param.min}
                       max={param.max}
                       step={param.step}
@@ -111,7 +282,9 @@ const SettingsModal = ({
                     <input
                       type="range"
                       value={getValue(param)}
-                      onChange={(e) => onSettingChange(param.key, e.target.value)}
+                      onChange={(e) =>
+                        onSettingChange(param.key, e.target.value)
+                      }
                       min={param.min}
                       max={param.max}
                       step={param.step}
