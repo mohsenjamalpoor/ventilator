@@ -1,7 +1,8 @@
-
+// ABGInterpretation.js
 import React, { useState, useEffect } from "react";
 import { MdCheckCircleOutline } from "react-icons/md";
 
+// کامپوننت نمایش محدوده نرمال برای کودکان
 const NormalRangeIndicator = ({ value, normalMin, normalMax, unit }) => {
   const numValue = parseFloat(value);
   if (!value) return null;
@@ -27,7 +28,7 @@ const NormalRangeIndicator = ({ value, normalMin, normalMax, unit }) => {
   );
 };
 
-
+// کامپوننت اصلی تفسیر ABG
 const ABGInterpretation = ({
   weight,
   selectedMode,
@@ -61,7 +62,7 @@ const ABGInterpretation = ({
     return ((parseFloat(tv) * parseFloat(rr)) / 1000).toFixed(2);
   };
 
-  // اعتبارسنجی مقادیر ABG  
+  // اعتبارسنجی مقادیر ABG برای کودکان
   const validateABG = () => {
     const { pH, pCO2, pO2, HCO3 } = abgValues;
     const errors = {};
@@ -124,7 +125,7 @@ const ABGInterpretation = ({
     return isValid;
   };
 
-  // تفسیر ABG  
+  // تفسیر ABG برای کودکان
   const interpretABG = () => {
     if (!validateABG()) {
       return;
@@ -146,7 +147,7 @@ const ABGInterpretation = ({
     // استفاده از تنظیمات فعلی برای محاسبه تغییرات
     let newSettings = { ...currentSettings };
 
-    // تفسیر  
+    // تفسیر برای کودکان
     if (pHNum < 7.35) {
       if (pCO2Num > 45) {
         interpretation = "اسیدوز تنفسی";
@@ -334,7 +335,7 @@ const ABGInterpretation = ({
                 : "border-gray-300"
             }`}
             placeholder="7.40"
-            dir="ltr" 
+            dir="ltr" // اضافه کردن جهت LTR برای اعداد
           />
           {abgErrors.pH && (
             <p className="text-red-500 text-xs mt-1 text-right">
@@ -365,7 +366,7 @@ const ABGInterpretation = ({
                 : "border-gray-300"
             }`}
             placeholder="40"
-            dir="ltr"   
+            dir="ltr" // اضافه کردن جهت LTR برای اعداد
           />
           {abgErrors.pCO2 && (
             <p className="text-red-500 text-xs mt-1 text-right">
@@ -396,7 +397,7 @@ const ABGInterpretation = ({
                 : "border-gray-300"
             }`}
             placeholder="80"
-            dir="ltr"
+            dir="ltr" // اضافه کردن جهت LTR برای اعداد
           />
           {abgErrors.pO2 && (
             <p className="text-red-500 text-xs mt-1 text-right">
@@ -427,7 +428,7 @@ const ABGInterpretation = ({
                 : "border-gray-300"
             }`}
             placeholder="24"
-            dir="ltr" 
+            dir="ltr" // اضافه کردن جهت LTR برای اعداد
           />
           {abgErrors.HCO3 && (
             <p className="text-red-500 text-xs mt-1 text-right">
