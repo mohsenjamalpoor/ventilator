@@ -421,9 +421,7 @@ export default function PediatricVentilator({
 
                 {/* بخش تنظیمات */}
                 <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-blue-100 shadow-inner">
-                  <h3 className="text-blue-800 font-bold mb-3 text-center">
-                    تنظیمات ونتیلاتور {isInfant ? "نوزادان" : "کودکان"}
-                  </h3>
+                 
 
                   {selectedMode === "CPAP" ? (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">

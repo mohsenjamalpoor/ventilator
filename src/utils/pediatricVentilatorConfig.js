@@ -13,7 +13,7 @@ export const initialSettingsConfig = {
     pip: 20,
     ti: 1.0,
     trigger: 5,
-    vteRatio: 0.85, // نسبت پایه VTe به VTi
+    vteRatio: 0.85,
   },
 
   normalLung: {
@@ -44,17 +44,17 @@ export const initialSettingsConfig = {
       ieRatio: "1:3",
       pip: 22,
       fio2: 45,
-      vteRatio: 0.65, // کاهش شدید به دلیل انسداد
+      vteRatio: 0.65, 
     },
     asthma: {
       mode: "PRVC",
       respiratoryRate: 22,
       tidalVolume: (weight) => (weight * 8).toFixed(1),
       peep: 6,
-      ieRatio: "1:3",
+      ieRatio: "1:4",
       pip: 25,
       fio2: 55,
-      vteRatio: 0.70, // کاهش قابل توجه
+      vteRatio: 0.70, 
     },
     copd: {
       mode: "SIMV",
@@ -64,7 +64,7 @@ export const initialSettingsConfig = {
       ieRatio: "1:3",
       pip: 22,
       fio2: 40,
-      vteRatio: 0.75, // کاهش متوسط
+      vteRatio: 0.75, 
     },
     foreign_body_aspiration: {
       mode: "PRVC",
@@ -74,7 +74,7 @@ export const initialSettingsConfig = {
       ieRatio: "1:2",
       pip: 20,
       fio2: 50,
-      vteRatio: 0.60, // کاهش شدید
+      vteRatio: 0.60, 
     },
   },
 
@@ -87,7 +87,7 @@ export const initialSettingsConfig = {
       ieRatio: "1:1.5",
       pip: 28,
       fio2: 65,
-      vteRatio: 0.75, // کاهش متوسط
+      vteRatio: 0.75,
     },
     ards: {
       mode: "PRVC",
@@ -97,7 +97,7 @@ export const initialSettingsConfig = {
       ieRatio: "1:1",
       pip: 32,
       fio2: 85,
-      vteRatio: 0.80, // کاهش مختصر (استراتژی محافظتی)
+      vteRatio: 0.80, 
     },
     pulmonary_edema: {
       mode: "PRVC",
@@ -107,7 +107,7 @@ export const initialSettingsConfig = {
       ieRatio: "1:1.5",
       pip: 30,
       fio2: 70,
-      vteRatio: 0.70, // کاهش قابل توجه
+      vteRatio: 0.70,
     },
     atelectasis: {
       mode: "SIMV",
@@ -117,7 +117,7 @@ export const initialSettingsConfig = {
       ieRatio: "1:2",
       pip: 25,
       fio2: 55,
-      vteRatio: 0.78, // کاهش مختصر
+      vteRatio: 0.78, 
     },
   },
 };
