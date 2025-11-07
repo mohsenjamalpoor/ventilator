@@ -1,16 +1,15 @@
-// src/components/PediatricVentilator.js
 import React, { useState } from "react";
 import { PiBellLight } from "react-icons/pi";
-
-// ایمپورت تنظیمات از فایل جداگانه
 import { 
   calculateAlarmRanges, 
   calculateMvent,
+  calculateVTe,
   getDiseaseName,
   getInitialSettings 
 } from "../utils/pediatricVentilatorConfig";
-
-// ایمپورت کامپوننت‌های مورد نیاز
+import { 
+  pediatricVentilatorModes
+} from "../utils/ventilatorModes";
 import ModeSelectionModal from "./ModeSelectionModal";
 import SettingsModal from "./SettingsModal";
 import ABGInterpretation from "./ABGInterpretation";
@@ -26,6 +25,9 @@ export default function PediatricVentilator({
   restrictiveDisease,
   onBack,
 }) {
+  // تعیین اینکه آیا بیمار نوزاد است یا نه
+  const isInfant = ageUnit === "months" && age <= 2;
+
   // محاسبه تنظیمات اولیه
   const initialSettings = getInitialSettings(
     weight, 
@@ -40,7 +42,6 @@ export default function PediatricVentilator({
     ...initialSettings,
     mvent: calculateMvent(initialSettings.tidalVolume, initialSettings.respiratoryRate),
     vti: initialSettings.tidalVolume,
-    vte: (weight * 6.5).toFixed(1),
   });
 
   // state برای ذخیره تنظیمات قبل از تفسیر ABG
@@ -57,183 +58,12 @@ export default function PediatricVentilator({
   // state برای محدوده‌های هشدار
   const [alarmRanges, setAlarmRanges] = useState(calculateAlarmRanges(currentSettings));
 
-  // تعریف مدهای ونتیلاتور برای کودکان
-  const ventilatorModes = {
-    SIMV: {
-      name: "SIMV",
-      description: "تهویه متناوب اجباری هماهنگ - مناسب کودکان",
-      parameters: [
-        {
-          key: "tidalVolume",
-          label: "حجم جاری",
-          unit: "ml",
-          min: weight * 5,
-          max: weight * 10,
-          step: 1,
-        },
-        {
-          key: "respiratoryRate",
-          label: "میزان تنفس",
-          unit: "/min",
-          min: 10,
-          max: 40,
-          step: 1,
-        },
-        { 
-          key: "fio2", 
-          label: "FiO₂", 
-          unit: "%", 
-          min: 21, 
-          max: 100, 
-          step: 1 
-        },
-        {
-          key: "peep",
-          label: "PEEP",
-          unit: "cmH₂O",
-          min: 3,
-          max: 15,
-          step: 1,
-        },
-        {
-          key: "ieRatio",
-          label: "نسبت I:E",
-          type: "select",
-          options: ["1:1", "1:1.5", "1:2", "1:2.5", "1:3"],
-        },
-        {
-          key: "pressureSupport",
-          label: "حمایت فشاری",
-          unit: "cmH₂O",
-          min: 8,
-          max: 25,
-          step: 1,
-        },
-        {
-          key: "flowRate",
-          label: "Flow Rate",
-          unit: "L/min",
-          min: 15,
-          max: 60,
-          step: 5,
-        },
-        {
-          key: "ti",
-          label: "Ti",
-          unit: "sec",
-          min: 0.5,
-          max: 2.0,
-          step: 0.1,
-        },
-        {
-          key: "trigger",
-          label: "Trigger",
-          unit: "cmH₂O",
-          min: -3,
-          max: 3,
-          step: 0.5,
-        },
-      ],
-    },
-    PRVC: {
-      name: "PRVC",
-      description: "حجم جاری تنظیم‌شده با فشار",
-      parameters: [
-        {
-          key: "tidalVolume",
-          label: "حجم جاری",
-          unit: "ml",
-          min: weight * 5,
-          max: weight * 10,
-          step: 0.1,
-        },
-        {
-          key: "respiratoryRate",
-          label: "میزان تنفس",
-          unit: "/min",
-          min: 12,
-          max: 35,
-          step: 1,
-        },
-        { 
-          key: "fio2", 
-          label: "FiO₂", 
-          unit: "%", 
-          min: 21, 
-          max: 100, 
-          step: 1 
-        },
-        {
-          key: "peep",
-          label: "PEEP",
-          unit: "cmH₂O",
-          min: 3,
-          max: 15,
-          step: 0.5,
-        },
-        {
-          key: "ieRatio",
-          label: "نسبت I:E",
-          type: "select",
-          options: ["1:1", "1:1.5", "1:2", "1:2.5", "1:3"],
-        },
-        {
-          key: "pip",
-          label: "PIP",
-          unit: "cmH₂O",
-          min: 15,
-          max: 40,
-          step: 1,
-        },
-        {
-          key: "ti",
-          label: "Ti",
-          unit: "sec",
-          min: 0.5,
-          max: 2.0,
-          step: 0.1,
-        },
-      ],
-    },
-    CPAP: {
-      name: "CPAP",
-      description: "فشار مثبت مداوم راه هوایی",
-      parameters: [
-        {
-          key: "cpap",
-          label: "سطح CPAP",
-          unit: "cmH₂O",
-          min: 4,
-          max: 12,
-          step: 0.5,
-        },
-        { 
-          key: "fio2", 
-          label: "FiO₂", 
-          unit: "%", 
-          min: 21, 
-          max: 100, 
-          step: 1 
-        },
-        {
-          key: "pressureSupport",
-          label: "حمایت فشاری",
-          unit: "cmH₂O",
-          min: 8,
-          max: 20,
-          step: 1,
-        },
-      ],
-    },
-  };
-
   // تابع بازنشانی تنظیمات
   const resetSettings = () => {
     const resetSettings = {
       ...initialSettings,
       mvent: calculateMvent(initialSettings.tidalVolume, initialSettings.respiratoryRate),
       vti: initialSettings.tidalVolume,
-      vte: (weight * 6.5).toFixed(1),
     };
     
     setCurrentSettings(resetSettings);
@@ -279,6 +109,13 @@ export default function PediatricVentilator({
       ...tempSettings,
       mvent: calculateMvent(tempSettings.tidalVolume, tempSettings.respiratoryRate),
       vti: tempSettings.tidalVolume,
+      vte: calculateVTe(
+        tempSettings.tidalVolume,
+        lungInvolvement,
+        normalLungCondition,
+        obstructiveDisease,
+        restrictiveDisease
+      )
     };
     setCurrentSettings(updatedSettings);
     setSettingsBeforeABG(updatedSettings);
@@ -300,10 +137,23 @@ export default function PediatricVentilator({
       );
       if (key === "tidalVolume") {
         newTempSettings.vti = value;
+        // محاسبه خودکار VTe هنگام تغییر VTi
+        newTempSettings.vte = calculateVTe(
+          value,
+          lungInvolvement,
+          normalLungCondition,
+          obstructiveDisease,
+          restrictiveDisease
+        );
       }
     }
 
     setTempSettings(newTempSettings);
+  };
+
+  // تابع بازنشانی تنظیمات در مودال
+  const handleResetSettings = () => {
+    setTempSettings({ ...currentSettings });
   };
 
   // توابع مربوط به ABG
@@ -316,6 +166,9 @@ export default function PediatricVentilator({
     setSettingsBeforeABG(settings);
   };
 
+  // گرفتن اطلاعات مد فعلی
+  const currentModeInfo = pediatricVentilatorModes[selectedMode];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-100 py-8 px-4">
       <div className="max-w-7xl mx-auto">
@@ -324,7 +177,7 @@ export default function PediatricVentilator({
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-blue-800 mb-2">
-                تنظیمات ونتیلاتور - کودکان
+                تنظیمات ونتیلاتور - {isInfant ? "نوزادان" : "کودکان"}
               </h1>
               <p className="text-blue-600">
                 بیماری: {getDiseaseName(lungInvolvement, normalLungCondition, obstructiveDisease, restrictiveDisease)}
@@ -360,7 +213,9 @@ export default function PediatricVentilator({
             </div>
             <div className="bg-green-50 rounded-lg p-4 text-center">
               <p className="text-green-600 text-sm">گروه سنی</p>
-              <p className="text-xl font-bold text-green-800">کودکان</p>
+              <p className="text-xl font-bold text-green-800">
+                {isInfant ? "نوزاد" : "کودکان"}
+              </p>
             </div>
             <div className="bg-orange-50 rounded-lg p-4 text-center">
               <p className="text-orange-600 text-sm">نوع درگیری</p>
@@ -384,10 +239,10 @@ export default function PediatricVentilator({
               <div className="bg-blue-50 rounded-xl p-4 border-2 border-blue-200 mb-4">
                 <div className="text-center">
                   <p className="text-blue-800 text-xl font-semibold mt-2">
-                    {ventilatorModes[selectedMode]?.name}
+                    {currentModeInfo?.name}
                   </p>
                   <p className="text-blue-600 text-sm mt-1">
-                    {ventilatorModes[selectedMode]?.description}
+                    {currentModeInfo?.description}
                   </p>
                 </div>
               </div>
@@ -416,32 +271,31 @@ export default function PediatricVentilator({
             {/* اطلاعات مد انتخاب شده */}
             <div className="bg-white rounded-2xl shadow-lg p-6">
               <h3 className="font-bold text-gray-800 mb-3">
-                📋 درباره مد {ventilatorModes[selectedMode]?.name}:
+                📋 درباره مد {currentModeInfo?.name}:
               </h3>
               <div className="text-gray-700 text-sm space-y-2">
-                {selectedMode === "SIMV" && (
-                  <>
-                    <p>• ترکیب تنفس اجباری و خودبخودی</p>
-                    <p>• مناسب برای weaning از ونتیلاتور</p>
-                    <p>• حفظ عملکرد عضلات تنفسی</p>
-                  </>
-                )}
-                {selectedMode === "PRVC" && (
-                  <>
-                    <p>• حجم جاری ثابت با کمترین فشار</p>
-                    <p>• مناسب برای بیماران با compliance متغیر</p>
-                    <p>• کاهش خطر باروتروما</p>
-                  </>
-                )}
+                {currentModeInfo?.clinicalIndications?.map((indication, index) => (
+                  <p key={index}>• {indication}</p>
+                ))}
+                
                 {selectedMode === "CPAP" && (
-                  <>
-                    <p className="text-red-600 text-lg font-bold">• back up فعال باشد</p>
-                    <p>• فشار مثبت مداوم در راه هوایی</p>
-                    <p>• مناسب برای بیماران با تنفس خودبخودی</p>
-                    <p>• بهبود oxygenation</p>
-                  </>
+                  <p className="text-red-600 text-lg font-bold mt-3">
+                    • back up فعال باشد
+                  </p>
                 )}
               </div>
+
+              {/* مزایای مد */}
+              {currentModeInfo?.advantages && (
+                <div className="mt-4">
+                  <h4 className="font-bold text-green-700 mb-2">مزایا:</h4>
+                  <div className="text-green-600 text-sm space-y-1">
+                    {currentModeInfo.advantages.map((advantage, index) => (
+                      <p key={index}>✓ {advantage}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -452,7 +306,7 @@ export default function PediatricVentilator({
               <div className="bg-gradient-to-br from-blue-50 to-cyan-100 rounded-2xl shadow-lg p-6 border border-blue-200">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-blue-800">
-                    مانیتور ونتیلاتور - کودکان
+                    مانیتور ونتیلاتور - {isInfant ? "نوزادان" : "کودکان"}
                   </h2>
                   <div className="flex items-center gap-2">
                     <button 
@@ -551,13 +405,24 @@ export default function PediatricVentilator({
                         <p className="text-blue-600 text-xs">ml</p>
                       </div>
                     </div>
+
+                    {/* VTe */}
+                    <div className="bg-gradient-to-br from-green-100 to-green-200 rounded-lg p-3 border border-green-300 shadow-sm">
+                      <div className="text-center">
+                        <h3 className="text-green-700 text-xs mb-1 font-semibold">VTe</h3>
+                        <p className="text-xl font-bold text-green-900">
+                          {currentSettings.vte}
+                        </p>
+                        <p className="text-green-600 text-xs">ml</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
                 {/* بخش تنظیمات */}
                 <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-blue-100 shadow-inner">
                   <h3 className="text-blue-800 font-bold mb-3 text-center">
-                    تنظیمات ونتیلاتور کودکان
+                    تنظیمات ونتیلاتور {isInfant ? "نوزادان" : "کودکان"}
                   </h3>
 
                   {selectedMode === "CPAP" ? (
@@ -660,6 +525,7 @@ export default function PediatricVentilator({
                 onSettingsUpdate={handleSettingsUpdateFromABG}
                 onSettingsBeforeUpdate={handleSettingsBeforeABG}
                 resetTrigger={resetTrigger}
+                isInfant={isInfant}
               />
             </div>
           </div>
@@ -670,21 +536,23 @@ export default function PediatricVentilator({
       <ModeSelectionModal
         show={showModeModal}
         onClose={closeModeModal}
-        modes={ventilatorModes}
+        modes={pediatricVentilatorModes}
         selectedMode={selectedMode}
         onModeChange={handleModeChange}
+        isInfant={isInfant}
       />
 
       <SettingsModal
         show={showSettingsModal}
         onClose={closeSettingsModal}
         onSave={saveSettings}
+        onReset={handleResetSettings}
         tempSettings={tempSettings}
         onSettingChange={handleSettingChange}
         selectedMode={selectedMode}
-        modes={ventilatorModes}
+        modes={pediatricVentilatorModes}
         weight={weight}
-        isInfant={false}
+        isInfant={isInfant}
       />
 
       <AlarmModal

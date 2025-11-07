@@ -1,5 +1,3 @@
-// src/utils/pediatricVentilatorConfig.js
-
 // آبجکت تنظیمات اولیه برای ونتیلاتور کودکان
 export const initialSettingsConfig = {
   baseSettings: {
@@ -15,6 +13,7 @@ export const initialSettingsConfig = {
     pip: 20,
     ti: 1.0,
     trigger: 5,
+    vteRatio: 0.85, // نسبت پایه VTe به VTi
   },
 
   normalLung: {
@@ -24,6 +23,7 @@ export const initialSettingsConfig = {
       tidalVolume: (weight) => (weight * 6).toFixed(1),
       peep: 5,
       pressureSupport: 15,
+      vteRatio: 0.88,
     },
     seizure: {
       mode: "PRVC",
@@ -31,6 +31,7 @@ export const initialSettingsConfig = {
       tidalVolume: (weight) => (weight * 7).toFixed(1),
       peep: 5,
       fio2: 40,
+      vteRatio: 0.90,
     },
   },
 
@@ -43,6 +44,7 @@ export const initialSettingsConfig = {
       ieRatio: "1:3",
       pip: 22,
       fio2: 45,
+      vteRatio: 0.65, // کاهش شدید به دلیل انسداد
     },
     asthma: {
       mode: "PRVC",
@@ -52,6 +54,7 @@ export const initialSettingsConfig = {
       ieRatio: "1:3",
       pip: 25,
       fio2: 55,
+      vteRatio: 0.70, // کاهش قابل توجه
     },
     copd: {
       mode: "SIMV",
@@ -61,6 +64,7 @@ export const initialSettingsConfig = {
       ieRatio: "1:3",
       pip: 22,
       fio2: 40,
+      vteRatio: 0.75, // کاهش متوسط
     },
     foreign_body_aspiration: {
       mode: "PRVC",
@@ -70,6 +74,7 @@ export const initialSettingsConfig = {
       ieRatio: "1:2",
       pip: 20,
       fio2: 50,
+      vteRatio: 0.60, // کاهش شدید
     },
   },
 
@@ -82,6 +87,7 @@ export const initialSettingsConfig = {
       ieRatio: "1:1.5",
       pip: 28,
       fio2: 65,
+      vteRatio: 0.75, // کاهش متوسط
     },
     ards: {
       mode: "PRVC",
@@ -91,6 +97,7 @@ export const initialSettingsConfig = {
       ieRatio: "1:1",
       pip: 32,
       fio2: 85,
+      vteRatio: 0.80, // کاهش مختصر (استراتژی محافظتی)
     },
     pulmonary_edema: {
       mode: "PRVC",
@@ -100,6 +107,7 @@ export const initialSettingsConfig = {
       ieRatio: "1:1.5",
       pip: 30,
       fio2: 70,
+      vteRatio: 0.70, // کاهش قابل توجه
     },
     atelectasis: {
       mode: "SIMV",
@@ -109,6 +117,7 @@ export const initialSettingsConfig = {
       ieRatio: "1:2",
       pip: 25,
       fio2: 55,
+      vteRatio: 0.78, // کاهش مختصر
     },
   },
 };
@@ -146,6 +155,38 @@ export const calculateMvent = (tv, rr) => {
   return ((parseFloat(tv) * parseFloat(rr)) / 1000).toFixed(2);
 };
 
+// تابع برای محاسبه VTe بر اساس نوع بیماری
+export const calculateVTe = (vti, lungInvolvement, normalLungCondition, obstructiveDisease, restrictiveDisease) => {
+  const vtiValue = parseFloat(vti);
+  let vteRatio = initialSettingsConfig.baseSettings.vteRatio;
+  
+  // یافتن نسبت مناسب بر اساس نوع بیماری
+  switch (lungInvolvement) {
+    case "normal":
+      if (normalLungCondition && initialSettingsConfig.normalLung[normalLungCondition]) {
+        vteRatio = initialSettingsConfig.normalLung[normalLungCondition].vteRatio || vteRatio;
+      }
+      break;
+      
+    case "obstructive":
+      if (obstructiveDisease && initialSettingsConfig.obstructiveDiseases[obstructiveDisease]) {
+        vteRatio = initialSettingsConfig.obstructiveDiseases[obstructiveDisease].vteRatio || vteRatio;
+      }
+      break;
+      
+    case "restrictive":
+      if (restrictiveDisease && initialSettingsConfig.restrictiveDiseases[restrictiveDisease]) {
+        vteRatio = initialSettingsConfig.restrictiveDiseases[restrictiveDisease].vteRatio || vteRatio;
+      }
+      break;
+      
+    default:
+      break;
+  }
+  
+  return (vtiValue * vteRatio).toFixed(1);
+};
+
 // تابع برای دریافت نام بیماری به فارسی
 export const getDiseaseName = (lungInvolvement, normalLungCondition, obstructiveDisease, restrictiveDisease) => {
   if (lungInvolvement === "normal") {
@@ -181,41 +222,46 @@ export const getInitialSettings = (weight, lungInvolvement, normalLungCondition,
     tidalVolume: base.tidalVolume(weight),
   };
 
+  let diseaseSettings = {};
+
   switch (lungInvolvement) {
     case "normal":
       if (normalLungCondition && initialSettingsConfig.normalLung[normalLungCondition]) {
-        const normalSettings = initialSettingsConfig.normalLung[normalLungCondition];
-        return {
-          ...baseSettings,
-          ...normalSettings,
-          tidalVolume: normalSettings.tidalVolume(weight),
-        };
+        diseaseSettings = initialSettingsConfig.normalLung[normalLungCondition];
       }
-      return baseSettings;
+      break;
 
     case "obstructive":
       if (obstructiveDisease && initialSettingsConfig.obstructiveDiseases[obstructiveDisease]) {
-        const obstructiveSettings = initialSettingsConfig.obstructiveDiseases[obstructiveDisease];
-        return {
-          ...baseSettings,
-          ...obstructiveSettings,
-          tidalVolume: obstructiveSettings.tidalVolume(weight),
-        };
+        diseaseSettings = initialSettingsConfig.obstructiveDiseases[obstructiveDisease];
       }
-      return baseSettings;
+      break;
 
     case "restrictive":
       if (restrictiveDisease && initialSettingsConfig.restrictiveDiseases[restrictiveDisease]) {
-        const restrictiveSettings = initialSettingsConfig.restrictiveDiseases[restrictiveDisease];
-        return {
-          ...baseSettings,
-          ...restrictiveSettings,
-          tidalVolume: restrictiveSettings.tidalVolume(weight),
-        };
+        diseaseSettings = initialSettingsConfig.restrictiveDiseases[restrictiveDisease];
       }
-      return baseSettings;
+      break;
 
     default:
-      return baseSettings;
+      break;
   }
+
+  // محاسبه VTe بر اساس تنظیمات بیماری
+  const finalSettings = {
+    ...baseSettings,
+    ...diseaseSettings,
+    tidalVolume: diseaseSettings.tidalVolume ? diseaseSettings.tidalVolume(weight) : baseSettings.tidalVolume,
+  };
+
+  // محاسبه VTe نهایی
+  finalSettings.vte = calculateVTe(
+    finalSettings.tidalVolume,
+    lungInvolvement,
+    normalLungCondition,
+    obstructiveDisease,
+    restrictiveDisease
+  );
+
+  return finalSettings;
 };
