@@ -1,122 +1,20 @@
-// PediatricVentilator.js
+// src/components/PediatricVentilator.js
 import React, { useState } from "react";
+import { PiBellLight } from "react-icons/pi";
+
+// ایمپورت تنظیمات از فایل جداگانه
+import { 
+  calculateAlarmRanges, 
+  calculateMvent,
+  getDiseaseName,
+  getInitialSettings 
+} from "../utils/pediatricVentilatorConfig";
+
+// ایمپورت کامپوننت‌های مورد نیاز
 import ModeSelectionModal from "./ModeSelectionModal";
 import SettingsModal from "./SettingsModal";
 import ABGInterpretation from "./ABGInterpretation";
-import { PiBellLight } from "react-icons/pi";
-
-// آبجکت تنظیمات اولیه
-const initialSettingsConfig = {
-  baseSettings: {
-    tidalVolume: (weight) => (weight * 7).toFixed(1),
-    respiratoryRate: 20,
-    fio2: 40,
-    peep: 5,
-    ieRatio: "1:2",
-    flowRate: 25,
-    mode: "SIMV",
-    pressureSupport: 12,
-    cpap: 6,
-    pip: 20,
-    ti: 1.0,
-    trigger: 5,
-  },
-
-  normalLung: {
-    reduced_consciousness: {
-      mode: "SIMV",
-      respiratoryRate: 25,
-      tidalVolume: (weight) => (weight * 6).toFixed(1),
-      peep: 5,
-      pressureSupport: 15,
-    },
-    seizure: {
-      mode: "PRVC",
-      respiratoryRate: 25,
-      tidalVolume: (weight) => (weight * 7).toFixed(1),
-      peep: 5,
-      fio2: 40,
-    },
-  },
-
-  obstructiveDiseases: {
-    bronchiolitis: {
-      mode: "PRVC",
-      respiratoryRate: 25,
-      tidalVolume: (weight) => (weight * 8).toFixed(1),
-      peep: 7,
-      ieRatio: "1:3",
-      pip: 22,
-      fio2: 45,
-    },
-    asthma: {
-      mode: "PRVC",
-      respiratoryRate: 22,
-      tidalVolume: (weight) => (weight * 8).toFixed(1),
-      peep: 6,
-      ieRatio: "1:3",
-      pip: 25,
-      fio2: 55,
-    },
-    copd: {
-      mode: "SIMV",
-      respiratoryRate: 18,
-      tidalVolume: (weight) => (weight * 8).toFixed(1),
-      peep: 6,
-      ieRatio: "1:3",
-      pip: 22,
-      fio2: 40,
-    },
-    foreign_body_aspiration: {
-      mode: "PRVC",
-      respiratoryRate: 24,
-      tidalVolume: (weight) => (weight * 8).toFixed(1),
-      peep: 5,
-      ieRatio: "1:2",
-      pip: 20,
-      fio2: 50,
-    },
-  },
-
-  restrictiveDiseases: {
-    pneumonia: {
-      mode: "PRVC",
-      respiratoryRate: 28,
-      tidalVolume: (weight) => (weight * 6).toFixed(1),
-      peep: 8,
-      ieRatio: "1:1.5",
-      pip: 28,
-      fio2: 65,
-    },
-    ards: {
-      mode: "PRVC",
-      respiratoryRate: 30,
-      tidalVolume: (weight) => (weight * 5).toFixed(1),
-      peep: 12,
-      ieRatio: "1:1",
-      pip: 32,
-      fio2: 85,
-    },
-    pulmonary_edema: {
-      mode: "PRVC",
-      respiratoryRate: 35,
-      tidalVolume: (weight) => (weight * 6).toFixed(1),
-      peep: 10,
-      ieRatio: "1:1.5",
-      pip: 30,
-      fio2: 70,
-    },
-    atelectasis: {
-      mode: "SIMV",
-      respiratoryRate: 22,
-      tidalVolume: (weight) => (weight * 7).toFixed(1),
-      peep: 8,
-      ieRatio: "1:2",
-      pip: 25,
-      fio2: 55,
-    },
-  },
-};
+import AlarmModal from "./AlarmModal";
 
 export default function PediatricVentilator({
   weight,
@@ -128,112 +26,38 @@ export default function PediatricVentilator({
   restrictiveDisease,
   onBack,
 }) {
-  // تابع برای محاسبه تنظیمات اولیه بر اساس نوع بیماری
-  const getInitialSettings = () => {
-    const base = initialSettingsConfig.baseSettings;
-    
-    const baseSettings = {
-      ...base,
-      tidalVolume: base.tidalVolume(weight),
-    };
-
-    switch (lungInvolvement) {
-      case "normal":
-        if (normalLungCondition && initialSettingsConfig.normalLung[normalLungCondition]) {
-          const normalSettings = initialSettingsConfig.normalLung[normalLungCondition];
-          return {
-            ...baseSettings,
-            ...normalSettings,
-            tidalVolume: normalSettings.tidalVolume(weight),
-          };
-        }
-        return baseSettings;
-
-      case "obstructive":
-        if (obstructiveDisease && initialSettingsConfig.obstructiveDiseases[obstructiveDisease]) {
-          const obstructiveSettings = initialSettingsConfig.obstructiveDiseases[obstructiveDisease];
-          return {
-            ...baseSettings,
-            ...obstructiveSettings,
-            tidalVolume: obstructiveSettings.tidalVolume(weight),
-          };
-        }
-        return baseSettings;
-
-      case "restrictive":
-        if (restrictiveDisease && initialSettingsConfig.restrictiveDiseases[restrictiveDisease]) {
-          const restrictiveSettings = initialSettingsConfig.restrictiveDiseases[restrictiveDisease];
-          return {
-            ...baseSettings,
-            ...restrictiveSettings,
-            tidalVolume: restrictiveSettings.tidalVolume(weight),
-          };
-        }
-        return baseSettings;
-
-      default:
-        return baseSettings;
-    }
-  };
-
-  // محاسبه تهویه دقیقه‌ای
-  const calculateMvent = (tv, rr) => {
-    return ((parseFloat(tv) * parseFloat(rr)) / 1000).toFixed(2);
-  };
+  // محاسبه تنظیمات اولیه
+  const initialSettings = getInitialSettings(
+    weight, 
+    lungInvolvement, 
+    normalLungCondition, 
+    obstructiveDisease, 
+    restrictiveDisease
+  );
 
   // state برای تنظیمات فعال
-  const initialSettings = getInitialSettings();
   const [currentSettings, setCurrentSettings] = useState({
     ...initialSettings,
-    mvent: calculateMvent(
-      initialSettings.tidalVolume,
-      initialSettings.respiratoryRate
-    ),
+    mvent: calculateMvent(initialSettings.tidalVolume, initialSettings.respiratoryRate),
     vti: initialSettings.tidalVolume,
     vte: (weight * 6.5).toFixed(1),
   });
 
-  // state جدید برای ذخیره تنظیمات قبل از تفسیر ABG
+  // state برای ذخیره تنظیمات قبل از تفسیر ABG
   const [settingsBeforeABG, setSettingsBeforeABG] = useState({ ...currentSettings });
 
+  // stateهای مربوط به مودال‌ها
   const [selectedMode, setSelectedMode] = useState(initialSettings.mode);
   const [showModeModal, setShowModeModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showAlarmModal, setShowAlarmModal] = useState(false);
-  const [tempSettings, setTempSettings] = useState({ ...initialSettings });
+  const [tempSettings, setTempSettings] = useState({ ...currentSettings });
   const [resetTrigger, setResetTrigger] = useState(0);
 
-  // محاسبه محدوده‌های هشدار برای کودکان
-  const calculateAlarmRanges = () => {
-    const currentRR = parseFloat(currentSettings.respiratoryRate);
-    const currentMvent = parseFloat(currentSettings.mvent);
-    const currentPeep = parseFloat(currentSettings.peep);
+  // state برای محدوده‌های هشدار
+  const [alarmRanges, setAlarmRanges] = useState(calculateAlarmRanges(currentSettings));
 
-    return {
-      rr: {
-        low: Math.max(8, currentRR / 2).toFixed(1),
-        high: (currentRR * 2).toFixed(1),
-        current: currentRR,
-        unit: "/min"
-      },
-      mvent: {
-        low: (currentMvent / 2).toFixed(2),
-        high: (currentMvent * 2).toFixed(2),
-        current: currentMvent,
-        unit: "L/min"
-      },
-      peep: {
-        low: Math.max(3, currentPeep - 2).toFixed(1),
-        high: (currentPeep + 2).toFixed(1),
-        current: currentPeep,
-        unit: "cmH₂O"
-      }
-    };
-  };
-
-  const [alarmRanges, setAlarmRanges] = useState(calculateAlarmRanges());
-
-  // مدهای ونتیلاتور برای کودکان
+  // تعریف مدهای ونتیلاتور برای کودکان
   const ventilatorModes = {
     SIMV: {
       name: "SIMV",
@@ -255,7 +79,14 @@ export default function PediatricVentilator({
           max: 40,
           step: 1,
         },
-        { key: "fio2", label: "FiO₂", unit: "%", min: 21, max: 100, step: 1 },
+        { 
+          key: "fio2", 
+          label: "FiO₂", 
+          unit: "%", 
+          min: 21, 
+          max: 100, 
+          step: 1 
+        },
         {
           key: "peep",
           label: "PEEP",
@@ -324,7 +155,14 @@ export default function PediatricVentilator({
           max: 35,
           step: 1,
         },
-        { key: "fio2", label: "FiO₂", unit: "%", min: 21, max: 100, step: 1 },
+        { 
+          key: "fio2", 
+          label: "FiO₂", 
+          unit: "%", 
+          min: 21, 
+          max: 100, 
+          step: 1 
+        },
         {
           key: "peep",
           label: "PEEP",
@@ -369,7 +207,14 @@ export default function PediatricVentilator({
           max: 12,
           step: 0.5,
         },
-        { key: "fio2", label: "FiO₂", unit: "%", min: 21, max: 100, step: 1 },
+        { 
+          key: "fio2", 
+          label: "FiO₂", 
+          unit: "%", 
+          min: 21, 
+          max: 100, 
+          step: 1 
+        },
         {
           key: "pressureSupport",
           label: "حمایت فشاری",
@@ -382,13 +227,11 @@ export default function PediatricVentilator({
     },
   };
 
+  // تابع بازنشانی تنظیمات
   const resetSettings = () => {
     const resetSettings = {
       ...initialSettings,
-      mvent: calculateMvent(
-        initialSettings.tidalVolume,
-        initialSettings.respiratoryRate
-      ),
+      mvent: calculateMvent(initialSettings.tidalVolume, initialSettings.respiratoryRate),
       vti: initialSettings.tidalVolume,
       vte: (weight * 6.5).toFixed(1),
     };
@@ -396,79 +239,54 @@ export default function PediatricVentilator({
     setCurrentSettings(resetSettings);
     setSettingsBeforeABG(resetSettings);
     setSelectedMode(initialSettings.mode);
-    setAlarmRanges(calculateAlarmRanges());
-    
-    // فعال کردن بازنشانی در کامپوننت ABG
+    setAlarmRanges(calculateAlarmRanges(resetSettings));
     setResetTrigger(prev => prev + 1);
   };
 
+  // تابع تغییر مد
   const handleModeChange = (mode) => {
     setSelectedMode(mode);
     const newSettings = {
       ...currentSettings,
       mode: mode,
-      mvent: calculateMvent(
-        currentSettings.tidalVolume,
-        currentSettings.respiratoryRate
-      ),
+      mvent: calculateMvent(currentSettings.tidalVolume, currentSettings.respiratoryRate),
     };
     setCurrentSettings(newSettings);
     setSettingsBeforeABG(newSettings);
     setShowModeModal(false);
-    setAlarmRanges(calculateAlarmRanges());
+    setAlarmRanges(calculateAlarmRanges(newSettings));
   };
 
-  // تابع برای به‌روزرسانی تنظیمات از ABG
-  const handleSettingsUpdateFromABG = (newSettings) => {
-    setCurrentSettings(newSettings);
-  };
-
-  // تابع برای ذخیره تنظیمات قبل از تفسیر ABG
-  const handleSettingsBeforeABG = (settings) => {
-    setSettingsBeforeABG(settings);
-  };
-
-  const openModeModal = () => {
-    setShowModeModal(true);
-  };
-
-  const closeModeModal = () => {
-    setShowModeModal(false);
-  };
-
+  // توابع مربوط به مودال‌ها
+  const openModeModal = () => setShowModeModal(true);
+  const closeModeModal = () => setShowModeModal(false);
+  
   const openSettingsModal = () => {
     setTempSettings({ ...currentSettings });
     setShowSettingsModal(true);
   };
-
-  const closeSettingsModal = () => {
-    setShowSettingsModal(false);
-  };
-
+  const closeSettingsModal = () => setShowSettingsModal(false);
+  
   const openAlarmModal = () => {
-    setAlarmRanges(calculateAlarmRanges());
+    setAlarmRanges(calculateAlarmRanges(currentSettings));
     setShowAlarmModal(true);
   };
+  const closeAlarmModal = () => setShowAlarmModal(false);
 
-  const closeAlarmModal = () => {
-    setShowAlarmModal(false);
-  };
-
+  // تابع ذخیره تنظیمات
   const saveSettings = () => {
     const updatedSettings = {
       ...tempSettings,
-      mvent: calculateMvent(
-        tempSettings.tidalVolume,
-        tempSettings.respiratoryRate
-      ),
+      mvent: calculateMvent(tempSettings.tidalVolume, tempSettings.respiratoryRate),
       vti: tempSettings.tidalVolume,
     };
     setCurrentSettings(updatedSettings);
     setSettingsBeforeABG(updatedSettings);
     setShowSettingsModal(false);
-    setAlarmRanges(calculateAlarmRanges());
+    setAlarmRanges(calculateAlarmRanges(updatedSettings));
   };
 
+  // تابع تغییر تنظیمات
   const handleSettingChange = (key, value) => {
     const newTempSettings = {
       ...tempSettings,
@@ -488,130 +306,14 @@ export default function PediatricVentilator({
     setTempSettings(newTempSettings);
   };
 
-  // تابع برای دریافت نام بیماری به فارسی
-  const getDiseaseName = () => {
-    if (lungInvolvement === "normal") {
-      return normalLungCondition === "reduced_consciousness" 
-        ? "کاهش سطح هوشیاری" 
-        : "تشنج";
-    } else if (lungInvolvement === "obstructive") {
-      const diseases = {
-        bronchiolitis: "برونشیولیت",
-        asthma: "آسم",
-        copd: "بیماری انسدادی مزمن ریوی",
-        foreign_body_aspiration: "آسپیراسیون جسم خارجی"
-      };
-      return diseases[obstructiveDisease] || obstructiveDisease;
-    } else if (lungInvolvement === "restrictive") {
-      const diseases = {
-        pneumonia: "پنومونی",
-        ards: "سندرم زجر تنفسی حاد (ARDS)",
-        pulmonary_edema: "ادم ریوی",
-        atelectasis: "آتلکتازی"
-      };
-      return diseases[restrictiveDisease] || restrictiveDisease;
-    }
-    return "بدون بیماری مشخص";
+  // توابع مربوط به ABG
+  const handleSettingsUpdateFromABG = (newSettings) => {
+    setCurrentSettings(newSettings);
+    setAlarmRanges(calculateAlarmRanges(newSettings));
   };
 
-  // کامپوننت مودال هشدار
-  const AlarmModal = ({ show, onClose, alarmRanges }) => {
-    if (!show) return null;
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4">
-          <div className="bg-blue-600 text-white rounded-t-2xl p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold">Alarm Profile - کودکان</h2>
-              </div>
-              <button
-                onClick={onClose}
-                className="text-white hover:text-gray-200 transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <div className="p-6">
-            <div className="space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <h3 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
-                  Respiratory Rate (RR)
-                </h3>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-red-100 rounded-lg p-2">
-                    <p className="text-xs text-red-600">پایین</p>
-                    <p className="font-bold text-red-800">{alarmRanges.rr.low}</p>
-                  </div>
-                  <div className="bg-green-100 rounded-lg p-2">
-                    <p className="text-xs text-green-600">فعلی</p>
-                    <p className="font-bold text-green-800">{alarmRanges.rr.current}</p>
-                  </div>
-                  <div className="bg-yellow-100 rounded-lg p-2">
-                    <p className="text-xs text-yellow-600">بالا</p>
-                    <p className="font-bold text-yellow-800">{alarmRanges.rr.high}</p>
-                  </div>
-                </div>
-                <p className="text-xs text-blue-600 mt-2 text-center">
-                  واحد: {alarmRanges.rr.unit}
-                </p>
-              </div>
-
-              <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
-                <h3 className="font-bold text-teal-800 mb-2 flex items-center gap-2">
-                  تهویه دقیقه‌ای (MVent)
-                </h3>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-red-100 rounded-lg p-2">
-                    <p className="text-xs text-red-600">پایین</p>
-                    <p className="font-bold text-red-800">{alarmRanges.mvent.low}</p>
-                  </div>
-                  <div className="bg-green-100 rounded-lg p-2">
-                    <p className="text-xs text-green-600">فعلی</p>
-                    <p className="font-bold text-green-800">{alarmRanges.mvent.current}</p>
-                  </div>
-                  <div className="bg-yellow-100 rounded-lg p-2">
-                    <p className="text-xs text-yellow-600">بالا</p>
-                    <p className="font-bold text-yellow-800">{alarmRanges.mvent.high}</p>
-                  </div>
-                </div>
-                <p className="text-xs text-teal-600 mt-2 text-center">
-                  واحد: {alarmRanges.mvent.unit}
-                </p>
-              </div>
-
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                <h3 className="font-bold text-green-800 mb-2 flex items-center gap-2">
-                  PEEP
-                </h3>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-red-100 rounded-lg p-2">
-                    <p className="text-xs text-red-600">پایین</p>
-                    <p className="font-bold text-red-800">{alarmRanges.peep.low}</p>
-                  </div>
-                  <div className="bg-green-100 rounded-lg p-2">
-                    <p className="text-xs text-green-600">فعلی</p>
-                    <p className="font-bold text-green-800">{alarmRanges.peep.current}</p>
-                  </div>
-                  <div className="bg-yellow-100 rounded-lg p-2">
-                    <p className="text-xs text-yellow-600">بالا</p>
-                    <p className="font-bold text-yellow-800">{alarmRanges.peep.high}</p>
-                  </div>
-                </div>
-                <p className="text-xs text-green-600 mt-2 text-center">
-                  واحد: {alarmRanges.peep.unit}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+  const handleSettingsBeforeABG = (settings) => {
+    setSettingsBeforeABG(settings);
   };
 
   return (
@@ -624,7 +326,9 @@ export default function PediatricVentilator({
               <h1 className="text-2xl font-bold text-blue-800 mb-2">
                 تنظیمات ونتیلاتور - کودکان
               </h1>
-              <p className="text-blue-600">بیماری: {getDiseaseName()}</p>
+              <p className="text-blue-600">
+                بیماری: {getDiseaseName(lungInvolvement, normalLungCondition, obstructiveDisease, restrictiveDisease)}
+              </p>
             </div>
             <div className="flex gap-2">
               <button
@@ -651,12 +355,7 @@ export default function PediatricVentilator({
             <div className="bg-cyan-50 rounded-lg p-4 text-center">
               <p className="text-cyan-600 text-sm">سن بیمار</p>
               <p className="text-xl font-bold text-cyan-800">
-                {age}{" "}
-                {ageUnit === "days"
-                  ? "روز"
-                  : ageUnit === "months"
-                  ? "ماه"
-                  : "سال"}
+                {age} {ageUnit === "days" ? "روز" : ageUnit === "months" ? "ماه" : "سال"}
               </p>
             </div>
             <div className="bg-green-50 rounded-lg p-4 text-center">
@@ -784,7 +483,7 @@ export default function PediatricVentilator({
                   </div>
                 </div>
 
-                {/* بخش مانیتور  */}
+                {/* بخش مانیتور */}
                 <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 mb-4 border border-blue-100 shadow-inner">
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                     {/* PIP */}
@@ -798,16 +497,16 @@ export default function PediatricVentilator({
                       </div>
                     </div>
 
-                     {/* RR */}
-                      <div className="bg-gradient-to-br from-green-100 to-green-200 rounded-lg p-3 border-2 border-green-400 shadow-sm">
-                        <div className="text-center">
-                          <h3 className="text-green-700 text-xs mb-1 font-semibold">RR</h3>
-                          <p className="text-xl font-bold text-green-900 mb-1">
-                            {currentSettings.respiratoryRate}
-                          </p>
-                          <p className="text-green-600 text-xs">/min</p>
-                        </div>
+                    {/* RR */}
+                    <div className="bg-gradient-to-br from-green-100 to-green-200 rounded-lg p-3 border-2 border-green-400 shadow-sm">
+                      <div className="text-center">
+                        <h3 className="text-green-700 text-xs mb-1 font-semibold">RR</h3>
+                        <p className="text-xl font-bold text-green-900 mb-1">
+                          {currentSettings.respiratoryRate}
+                        </p>
+                        <p className="text-green-600 text-xs">/min</p>
                       </div>
+                    </div>
 
                     {/* FiO2 */}
                     <div className="bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg p-3 border border-purple-300 shadow-sm">
@@ -852,27 +551,15 @@ export default function PediatricVentilator({
                         <p className="text-blue-600 text-xs">ml</p>
                       </div>
                     </div>
-
-                    {/* VTe */}
-                    <div className="bg-gradient-to-br from-green-100 to-green-200 rounded-lg p-3 border border-green-300 shadow-sm">
-                      <div className="text-center">
-                        <h3 className="text-green-700 text-xs mb-1 font-semibold">VTe</h3>
-                        <p className="text-xl font-bold text-green-900">
-                          {currentSettings.vte}
-                        </p>
-                        <p className="text-green-600 text-xs">ml</p>
-                      </div>
-                    </div>
                   </div>
                 </div>
 
-                {/* بخش تنظیمات در پایین صفحه */}
+                {/* بخش تنظیمات */}
                 <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-blue-100 shadow-inner">
                   <h3 className="text-blue-800 font-bold mb-3 text-center">
                     تنظیمات ونتیلاتور کودکان
                   </h3>
 
-                  {/* برای مد CPAP */}
                   {selectedMode === "CPAP" ? (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       {/* Pressure Support */}
@@ -913,7 +600,6 @@ export default function PediatricVentilator({
                       </div>
                     </div>
                   ) : (
-                    /* برای مدهای SIMV و PRVC */
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       {/* TV */}
                       <div className="bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg p-3 border-2 border-blue-400 shadow-sm">
@@ -965,7 +651,7 @@ export default function PediatricVentilator({
                 </div>
               </div>
 
-              {/* استفاده از کامپوننت تفسیر ABG */}
+              {/* کامپوننت تفسیر ABG */}
               <ABGInterpretation
                 weight={weight}
                 selectedMode={selectedMode}
