@@ -217,7 +217,6 @@ export const pediatricVentilatorModes = {
     ],
     clinicalIndications: [
       "آپنه خواب و اختلالات راه هوایی",
-      "ادم ریوی و هیپوکسمی",
       "بیماران با تنفس خودبخودی کافی"
     ],
     advantages: [
