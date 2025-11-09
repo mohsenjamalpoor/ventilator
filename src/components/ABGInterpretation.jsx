@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from "react";
-import { MdCheckCircleOutline } from "react-icons/md";
+import { MdCheckCircleOutline, MdExpandMore, MdExpandLess } from "react-icons/md";
 
 // کامپوننت نمایش محدوده نرمال برای کودکان
 const NormalRangeIndicator = ({
@@ -50,7 +49,7 @@ const ABGInterpretation = ({
     pCO2: "",
     pO2: "",
     HCO3: "",
-    BE: "", // Base Excess اضافه شد
+    BE: "",
   });
   const [abgInterpretation, setAbgInterpretation] = useState({
     primary: "",
@@ -58,12 +57,14 @@ const ABGInterpretation = ({
     oxygenation: "",
     compensation: "",
     chronicity: "",
-    clinicalImplications: "", // پیامدهای بالینی اضافه شد
-    management: "", // مدیریت اضافه شد
+    clinicalImplications: "",
+    management: "",
   });
   const [abgErrors, setAbgErrors] = useState({});
   const [showValidation, setShowValidation] = useState(false);
   const [appliedChanges, setAppliedChanges] = useState([]);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   // اثر برای بازنشانی state های داخلی وقتی تنظیمات اصلی بازنشانی می‌شوند
   useEffect(() => {
@@ -74,7 +75,12 @@ const ABGInterpretation = ({
 
   // محاسبه تهویه دقیقه‌ای
   const calculateMvent = (tv, rr) => {
-    return ((parseFloat(tv) * parseFloat(rr)) / 1000).toFixed(2);
+    const tidalVolume = parseFloat(tv);
+    const respiratoryRate = parseFloat(rr);
+    
+    if (isNaN(tidalVolume) || isNaN(respiratoryRate)) return "0.00";
+    
+    return ((tidalVolume * respiratoryRate) / 1000).toFixed(2);
   };
 
   // اعتبارسنجی مقادیر ABG برای کودکان
@@ -213,237 +219,237 @@ const ABGInterpretation = ({
   };
 
   // تفسیر دقیق ABG برای کودکان بر اساس رفرنس‌های نلسون و اپ‌تودیت
-  const interpretABG = () => {
-    if (!validateABG()) {
-      return;
-    }
+  const interpretABG = async () => {
+    setIsCalculating(true);
+    
+    try {
+      if (!validateABG()) {
+        return;
+      }
 
-    // ذخیره تنظیمات فعلی قبل از اعمال تغییرات
-    if (onSettingsBeforeUpdate) {
-      onSettingsBeforeUpdate(currentSettings);
-    }
+      // ذخیره تنظیمات فعلی قبل از اعمال تغییرات
+      if (onSettingsBeforeUpdate) {
+        onSettingsBeforeUpdate(currentSettings);
+      }
 
-    const { pH, pCO2, pO2, HCO3, BE } = abgValues;
-    const pHNum = parseFloat(pH);
-    const pCO2Num = parseFloat(pCO2);
-    const pO2Num = parseFloat(pO2);
-    const HCO3Num = parseFloat(HCO3);
+      const { pH, pCO2, pO2, HCO3, BE } = abgValues;
+      const pHNum = parseFloat(pH);
+      const pCO2Num = parseFloat(pCO2);
+      const pO2Num = parseFloat(pO2);
+      const HCO3Num = parseFloat(HCO3);
 
-    let interpretation = {
-      primary: "",
-      secondary: "",
-      oxygenation: "",
-      compensation: "",
-      chronicity: "",
-      clinicalImplications: "",
-      management: "",
-    };
+      let interpretation = {
+        primary: "",
+        secondary: "",
+        oxygenation: "",
+        compensation: "",
+        chronicity: "",
+        clinicalImplications: "",
+        management: "",
+      };
 
-    let newSettings = { ...currentSettings };
+      let newSettings = { ...currentSettings };
 
-    // تفسیر اصلی بر اساس الگوریتم نلسون
-    const isAcidemia = pHNum < 7.35;
-    const isAlkalemia = pHNum > 7.45;
+      // تفسیر اصلی بر اساس الگوریتم نلسون
+      const isAcidemia = pHNum < 7.35;
+      const isAlkalemia = pHNum > 7.45;
 
-    // تشخیص اختلال اولیه
-    if (isAcidemia) {
-      if (pCO2Num > 45) {
-        interpretation.primary = "اسیدوز تنفسی اولیه";
-        const chronicityInfo = determineChronicity(pH, pCO2, HCO3);
-        interpretation.chronicity = chronicityInfo.status;
+      // تشخیص اختلال اولیه
+      if (isAcidemia) {
+        if (pCO2Num > 45) {
+          interpretation.primary = "اسیدوز تنفسی اولیه";
+          const chronicityInfo = determineChronicity(pH, pCO2, HCO3);
+          interpretation.chronicity = chronicityInfo.status;
 
-        // تنظیمات ونتیلاتور برای اسیدوز تنفسی
-        if (chronicityInfo.status.includes("حاد")) {
-          interpretation.management =
-            "افزایش تهویه دقیقه‌ای - بررسی علل انسداد راه هوایی";
-          newSettings.respiratoryRate = Math.min(
-            40,
-            parseInt(currentSettings.respiratoryRate) + 4
-          );
-          if (selectedMode === "SIMV" || selectedMode === "PRVC") {
-            newSettings.tidalVolume = Math.min(
-              weight * 10,
-              parseFloat(currentSettings.tidalVolume) + 3
-            ).toFixed(1);
+          // تنظیمات ونتیلاتور برای اسیدوز تنفسی
+          if (chronicityInfo.status.includes("حاد")) {
+            interpretation.management =
+              "افزایش تهویه دقیقه‌ای - بررسی علل انسداد راه هوایی";
+            newSettings.respiratoryRate = Math.min(
+              40,
+              parseInt(currentSettings.respiratoryRate) + 4
+            );
+            if (selectedMode === "SIMV" || selectedMode === "PRVC") {
+              newSettings.tidalVolume = Math.min(
+                weight * 10,
+                parseFloat(currentSettings.tidalVolume) + 3
+              ).toFixed(1);
+            }
+          } else if (chronicityInfo.status.includes("مزمن")) {
+            interpretation.management =
+              "تهویه حمایتی - پایش منظم - اجازه جبران متابولیک";
+            newSettings.respiratoryRate = Math.min(
+              35,
+              parseInt(currentSettings.respiratoryRate) + 2
+            );
           }
-        } else if (chronicityInfo.status.includes("مزمن")) {
-          interpretation.management =
-            "تهویه حمایتی - پایش منظم - اجازه جبران متابولیک";
-          newSettings.respiratoryRate = Math.min(
-            35,
-            parseInt(currentSettings.respiratoryRate) + 2
-          );
-        }
 
-        interpretation.clinicalImplications =
-          "علل شایع: آسم، برونشیولیت، پنومونی، آسپیراسیون، اختلالات CNS";
-      } else if (HCO3Num < 22) {
-        interpretation.primary = "اسیدوز متابولیک اولیه";
-
-        // تفسیر آنیون گپ بر اساس نلسون
-        const anionGap = 140 - (HCO3Num + 104); // Na - (HCO3 + Cl)
-        let gapType = "";
-
-        if (anionGap > 16) {
-          gapType = "اسیدوز متابولیک با آنیون گپ بالا";
           interpretation.clinicalImplications =
-            "علل: کتواسیدوز دیابتی، اورمی، لاکتیک اسیدوز، مسمومیت";
-        } else if (anionGap <= 16) {
-          gapType = "اسیدوز متابولیک با آنیون گپ نرمال";
-          interpretation.clinicalImplications =
-            "علل: اسهال، RTA، هیپرکلرمی، داروها";
-        }
+            "علل شایع: آسم، برونشیولیت، پنومونی، آسپیراسیون، اختلالات CNS";
+        } else if (HCO3Num < 22) {
+          interpretation.primary = "اسیدوز متابولیک اولیه";
 
-        interpretation.secondary = ` (${gapType} - آنیون گپ: ${anionGap.toFixed(
-          1
-        )} mEq/L)`;
+          // تفسیر آنیون گپ بر اساس نلسون
+          const anionGap = 140 - (HCO3Num + 104); // Na - (HCO3 + Cl)
+          let gapType = "";
 
-        // جبران تنفسی مورد انتظار (فرمول وینتر نلسون)
-        const expectedPCO2 = 1.5 * HCO3Num + 8;
-        if (Math.abs(pCO2Num - expectedPCO2) <= 2) {
-          interpretation.compensation = `جبران تنفسی مناسب (pCO₂ مورد انتظار: ${expectedPCO2.toFixed(
-            1
-          )} mmHg)`;
-        } else if (pCO2Num > expectedPCO2) {
-          interpretation.compensation = `اسیدوز تنفسی اضافی (pCO₂ بالاتر از حد مورد انتظار)`;
-        } else {
-          interpretation.compensation = `آلکالوز تنفسی اضافی (pCO₂ پایین‌تر از حد مورد انتظار)`;
-        }
-
-        interpretation.management =
-          "اصلاح علت زمینه‌ای - بررسی الکترولیت‌ها - بی‌کربنات فقط در pH < 7.1";
-
-        // تنظیمات برای اسیدوز متابولیک
-        newSettings.tidalVolume = Math.min(
-          weight * 10,
-          parseFloat(currentSettings.tidalVolume) + 2
-        ).toFixed(1);
-      }
-    } else if (isAlkalemia) {
-      if (pCO2Num < 35) {
-        interpretation.primary = "آلکالوز تنفسی اولیه";
-        const chronicityInfo = determineChronicity(pH, pCO2, HCO3);
-        interpretation.chronicity = chronicityInfo.status;
-
-        interpretation.clinicalImplications =
-          "علل شایع: اضطراب، درد، تب، سپسیس، CNS disorders";
-
-        // تنظیمات ونتیلاتور برای آلکالوز تنفسی
-        if (chronicityInfo.status.includes("حاد")) {
-          interpretation.management =
-            "کاهش تهویه - درمان علت زمینه‌ای - آرام‌بخشی";
-          newSettings.respiratoryRate = Math.max(
-            12,
-            parseInt(currentSettings.respiratoryRate) - 4
-          );
-          if (selectedMode === "SIMV" || selectedMode === "PRVC") {
-            newSettings.tidalVolume = Math.max(
-              weight * 5,
-              parseFloat(currentSettings.tidalVolume) - 3
-            ).toFixed(1);
+          if (anionGap > 16) {
+            gapType = "اسیدوز متابولیک با آنیون گپ بالا";
+            interpretation.clinicalImplications =
+              "علل: کتواسیدوز دیابتی، اورمی، لاکتیک اسیدوز، مسمومیت";
+          } else if (anionGap <= 16) {
+            gapType = "اسیدوز متابولیک با آنیون گپ نرمال";
+            interpretation.clinicalImplications =
+              "علل: اسهال، RTA، هیپرکلرمی، داروها";
           }
-        }
-      } else if (HCO3Num > 26) {
-        interpretation.primary = "آلکالوز متابولیک اولیه";
 
-        interpretation.clinicalImplications =
-          "علل شایع: استفراغ، دیورتیک‌ها، هیپرآلدوسترونیسم، حجم اضافه";
-
-        // جبران تنفسی مورد انتظار
-        const expectedPCO2 = 0.7 * HCO3Num + 20;
-        if (Math.abs(pCO2Num - expectedPCO2) <= 3) {
-          interpretation.compensation = `جبران تنفسی مناسب (pCO₂ مورد انتظار: ${expectedPCO2.toFixed(
+          interpretation.secondary = ` (${gapType} - آنیون گپ: ${anionGap.toFixed(
             1
-          )} mmHg)`;
-        } else if (pCO2Num < expectedPCO2) {
-          interpretation.compensation = `آلکالوز تنفسی اضافی (pCO₂ پایین‌تر از حد مورد انتظار)`;
-        } else {
-          interpretation.compensation = `اسیدوز تنفسی اضافی (pCO₂ بالاتر از حد مورد انتظار)`;
+          )} mEq/L)`;
+
+          // جبران تنفسی مورد انتظار (فرمول وینتر نلسون)
+          const expectedPCO2 = 1.5 * HCO3Num + 8;
+          if (Math.abs(pCO2Num - expectedPCO2) <= 2) {
+            interpretation.compensation = `جبران تنفسی مناسب (pCO₂ مورد انتظار: ${expectedPCO2.toFixed(
+              1
+            )} mmHg)`;
+          } else if (pCO2Num > expectedPCO2) {
+            interpretation.compensation = `اسیدوز تنفسی اضافی (pCO₂ بالاتر از حد مورد انتظار)`;
+          } else {
+            interpretation.compensation = `آلکالوز تنفسی اضافی (pCO₂ پایین‌تر از حد مورد انتظار)`;
+          }
+
+          interpretation.management =
+            "اصلاح علت زمینه‌ای - بررسی الکترولیت‌ها - بی‌کربنات فقط در pH < 7.1";
+
+          // تنظیمات برای اسیدوز متابولیک
+          newSettings.tidalVolume = Math.min(
+            weight * 10,
+            parseFloat(currentSettings.tidalVolume) + 2
+          ).toFixed(1);
         }
+      } else if (isAlkalemia) {
+        if (pCO2Num < 35) {
+          interpretation.primary = "آلکالوز تنفسی اولیه";
+          const chronicityInfo = determineChronicity(pH, pCO2, HCO3);
+          interpretation.chronicity = chronicityInfo.status;
 
-        interpretation.management =
-          "اصلاح کم‌آبی - جایگزینی پتاسیم و کلر - بررسی دیورتیک‌ها";
+          interpretation.clinicalImplications =
+            "علل شایع: اضطراب، درد، تب، سپسیس، CNS disorders";
 
-        newSettings.tidalVolume = Math.max(
-          weight * 5,
-          parseFloat(currentSettings.tidalVolume) - 2
-        ).toFixed(1);
+          // تنظیمات ونتیلاتور برای آلکالوز تنفسی
+          if (chronicityInfo.status.includes("حاد")) {
+            interpretation.management =
+              "کاهش تهویه - درمان علت زمینه‌ای - آرام‌بخشی";
+            newSettings.respiratoryRate = Math.max(
+              12,
+              parseInt(currentSettings.respiratoryRate) - 4
+            );
+            if (selectedMode === "SIMV" || selectedMode === "PRVC") {
+              newSettings.tidalVolume = Math.max(
+                weight * 5,
+                parseFloat(currentSettings.tidalVolume) - 3
+              ).toFixed(1);
+            }
+          }
+        } else if (HCO3Num > 26) {
+          interpretation.primary = "آلکالوز متابولیک اولیه";
+
+          interpretation.clinicalImplications =
+            "علل شایع: استفراغ، دیورتیک‌ها، هیپرآلدوسترونیسم، حجم اضافه";
+
+          // جبران تنفسی مورد انتظار
+          const expectedPCO2 = 0.7 * HCO3Num + 20;
+          if (Math.abs(pCO2Num - expectedPCO2) <= 3) {
+            interpretation.compensation = `جبران تنفسی مناسب (pCO₂ مورد انتظار: ${expectedPCO2.toFixed(
+              1
+            )} mmHg)`;
+          } else if (pCO2Num < expectedPCO2) {
+            interpretation.compensation = `آلکالوز تنفسی اضافی (pCO₂ پایین‌تر از حد مورد انتظار)`;
+          } else {
+            interpretation.compensation = `اسیدوز تنفسی اضافی (pCO₂ بالاتر از حد مورد انتظار)`;
+          }
+
+          interpretation.management =
+            "اصلاح کم‌آبی - جایگزینی پتاسیم و کلر - بررسی دیورتیک‌ها";
+
+          newSettings.tidalVolume = Math.max(
+            weight * 5,
+            parseFloat(currentSettings.tidalVolume) - 2
+          ).toFixed(1);
+        }
+      } else {
+        interpretation.primary = "ABG نرمال از نظر اسید-باز";
       }
-    } else {
-      interpretation.primary = "ABG نرمال از نظر اسید-باز";
-    }
 
-    // تشخیص اختلالات مختلط
-    if (pHNum >= 7.35 && pHNum <= 7.45) {
-      if (pCO2Num > 45 && HCO3Num > 26) {
-        interpretation.primary =
-          "اختلال مختلط: آلکالوز متابولیک + اسیدوز تنفسی";
-        interpretation.clinicalImplications =
-          "معمولاً در بیماری‌های مزمن ریوی دیده می‌شود";
-      } else if (pCO2Num < 35 && HCO3Num < 22) {
-        interpretation.primary =
-          "اختلال مختلط: اسیدوز متابولیک + آلکالوز تنفسی";
-        interpretation.clinicalImplications =
-          "معمولاً در سپسیس، مسمومیت‌ها و بیماری‌های کبدی دیده می‌شود";
+      // تشخیص اختلالات مختلط
+      if (pHNum >= 7.35 && pHNum <= 7.45) {
+        if (pCO2Num > 45 && HCO3Num > 26) {
+          interpretation.primary =
+            "اختلال مختلط: آلکالوز متابولیک + اسیدوز تنفسی";
+          interpretation.clinicalImplications =
+            "معمولاً در بیماری‌های مزمن ریوی دیده می‌شود";
+        } else if (pCO2Num < 35 && HCO3Num < 22) {
+          interpretation.primary =
+            "اختلال مختلط: اسیدوز متابولیک + آلکالوز تنفسی";
+          interpretation.clinicalImplications =
+            "معمولاً در سپسیس، مسمومیت‌ها و بیماری‌های کبدی دیده می‌شود";
+        }
       }
-    }
 
-    // تفسیر Base Excess
-    if (BE) {
-      const BEInterpretation = interpretBaseExcess(BE);
-      if (BEInterpretation && !interpretation.secondary) {
-        interpretation.secondary = ` (${BEInterpretation})`;
+      // تفسیر Base Excess
+      if (BE) {
+        const BEInterpretation = interpretBaseExcess(BE);
+        if (BEInterpretation && !interpretation.secondary) {
+          interpretation.secondary = ` (${BEInterpretation})`;
+        }
       }
-    }
 
-    // ارزیابی اکسیژناسیون بر اساس نلسون
-    const PaO2_FiO2_Ratio = pO2Num / (parseInt(currentSettings.fio2) / 100);
+      // ارزیابی اکسیژناسیون بر اساس نلسون (بدون نمایش PaO₂/FiO₂)
+      const currentFiO2 = parseInt(currentSettings.fio2) || 21;
 
-    if (pO2Num < 60) {
-      interpretation.oxygenation = `هیپوکسمی شدید (PaO₂/FiO₂: ${PaO2_FiO2_Ratio.toFixed(
-        1
-      )} - احتمال ARDS)`;
-      interpretation.management +=
-        " - پشتیبانی تهویه تهاجمی - مانیتورینگ دقیق اکسیژناسیون";
-      newSettings.fio2 = Math.min(100, parseInt(currentSettings.fio2) + 30);
-      newSettings.peep = Math.min(12, parseInt(currentSettings.peep) + 3);
-    } else if (pO2Num < 80) {
-      interpretation.oxygenation = `هیپوکسمی متوسط (PaO₂/FiO₂: ${PaO2_FiO2_Ratio.toFixed(
-        1
-      )})`;
-      newSettings.fio2 = Math.min(80, parseInt(currentSettings.fio2) + 20);
-      newSettings.peep = Math.min(10, parseInt(currentSettings.peep) + 2);
-    } else if (pO2Num >= 80 && pO2Num < 100) {
-      interpretation.oxygenation = `اکسیژناسیون قابل قبول (PaO₂/FiO₂: ${PaO2_FiO2_Ratio.toFixed(
-        1
-      )})`;
-      if (parseInt(currentSettings.fio2) > 40) {
-        newSettings.fio2 = Math.max(30, parseInt(currentSettings.fio2) - 10);
+      if (pO2Num < 60) {
+        interpretation.oxygenation = "هیپوکسمی شدید (احتمال ARDS)";
+        interpretation.management +=
+          " - پشتیبانی تهویه تهاجمی - مانیتورینگ دقیق اکسیژناسیون";
+        newSettings.fio2 = Math.min(100, currentFiO2 + 30);
+        newSettings.peep = Math.min(12, parseInt(currentSettings.peep || 5) + 3);
+      } else if (pO2Num < 80) {
+        interpretation.oxygenation = "هیپوکسمی متوسط";
+        newSettings.fio2 = Math.min(80, currentFiO2 + 20);
+        newSettings.peep = Math.min(10, parseInt(currentSettings.peep || 5) + 2);
+      } else if (pO2Num >= 80 && pO2Num < 100) {
+        interpretation.oxygenation = "اکسیژناسیون قابل قبول";
+        if (currentFiO2 > 40) {
+          newSettings.fio2 = Math.max(30, currentFiO2 - 10);
+        }
+      } else {
+        interpretation.oxygenation = "اکسیژناسیون خوب";
+        if (currentFiO2 > 30) {
+          newSettings.fio2 = Math.max(21, currentFiO2 - 15);
+        }
       }
-    } else {
-      interpretation.oxygenation = `اکسیژناسیون خوب (PaO₂/FiO₂: ${PaO2_FiO2_Ratio.toFixed(
-        1
-      )})`;
-      if (parseInt(currentSettings.fio2) > 30) {
-        newSettings.fio2 = Math.max(21, parseInt(currentSettings.fio2) - 15);
+
+      // محاسبه مقادیر وابسته
+      newSettings.mvent = calculateMvent(
+        newSettings.tidalVolume,
+        newSettings.respiratoryRate
+      );
+      newSettings.vti = newSettings.tidalVolume;
+
+      setAbgInterpretation(interpretation);
+
+      // محاسبه تغییرات اعمال شده
+      calculateAppliedChanges(currentSettings, newSettings);
+
+      // ارسال تنظیمات جدید به کامپوننت والد
+      if (onSettingsUpdate) {
+        onSettingsUpdate(newSettings);
       }
-    }
-
-    // محاسبه مقادیر وابسته
-    newSettings.mvent = calculateMvent(
-      newSettings.tidalVolume,
-      newSettings.respiratoryRate
-    );
-    newSettings.vti = newSettings.tidalVolume;
-
-    setAbgInterpretation(interpretation);
-
-    // محاسبه تغییرات اعمال شده
-    calculateAppliedChanges(currentSettings, newSettings);
-
-    // ارسال تنظیمات جدید به کامپوننت والد
-    if (onSettingsUpdate) {
-      onSettingsUpdate(newSettings);
+    } catch (error) {
+      console.error("Error in ABG interpretation:", error);
+    } finally {
+      setIsCalculating(false);
     }
   };
 
@@ -452,55 +458,57 @@ const ABGInterpretation = ({
     const changes = [];
 
     if (beforeSettings && afterSettings) {
-      if (
-        parseInt(beforeSettings.respiratoryRate) !==
-        parseInt(afterSettings.respiratoryRate)
-      ) {
+      const beforeRR = parseInt(beforeSettings.respiratoryRate);
+      const afterRR = parseInt(afterSettings.respiratoryRate);
+      if (beforeRR !== afterRR) {
         changes.push({
           label: "RR",
-          from: beforeSettings.respiratoryRate,
-          to: afterSettings.respiratoryRate,
+          from: beforeRR,
+          to: afterRR,
           unit: "/min",
         });
       }
 
-      if (
-        parseFloat(beforeSettings.tidalVolume) !==
-        parseFloat(afterSettings.tidalVolume)
-      ) {
+      const beforeTV = parseFloat(beforeSettings.tidalVolume);
+      const afterTV = parseFloat(afterSettings.tidalVolume);
+      if (beforeTV !== afterTV) {
         changes.push({
           label: "TV",
-          from: beforeSettings.tidalVolume,
-          to: afterSettings.tidalVolume,
+          from: beforeTV,
+          to: afterTV,
           unit: "ml",
         });
       }
 
-      if (parseInt(beforeSettings.fio2) !== parseInt(afterSettings.fio2)) {
+      const beforeFiO2 = parseInt(beforeSettings.fio2);
+      const afterFiO2 = parseInt(afterSettings.fio2);
+      if (beforeFiO2 !== afterFiO2) {
         changes.push({
           label: "FiO₂",
-          from: beforeSettings.fio2,
-          to: afterSettings.fio2,
+          from: beforeFiO2,
+          to: afterFiO2,
           unit: "%",
         });
       }
 
-      if (parseInt(beforeSettings.peep) !== parseInt(afterSettings.peep)) {
+      const beforePEEP = parseInt(beforeSettings.peep);
+      const afterPEEP = parseInt(afterSettings.peep);
+      if (beforePEEP !== afterPEEP) {
         changes.push({
           label: "PEEP",
-          from: beforeSettings.peep,
-          to: afterSettings.peep,
+          from: beforePEEP,
+          to: afterPEEP,
           unit: "cmH₂O",
         });
       }
 
-      if (
-        parseFloat(beforeSettings.mvent) !== parseFloat(afterSettings.mvent)
-      ) {
+      const beforeMVent = parseFloat(beforeSettings.mvent);
+      const afterMVent = parseFloat(afterSettings.mvent);
+      if (beforeMVent !== afterMVent) {
         changes.push({
           label: "MVent",
-          from: beforeSettings.mvent,
-          to: afterSettings.mvent,
+          from: beforeMVent,
+          to: afterMVent,
           unit: "L/min",
         });
       }
@@ -542,13 +550,14 @@ const ABGInterpretation = ({
     setAbgErrors({});
     setShowValidation(false);
     setAppliedChanges([]);
+    setShowGuide(false);
   };
 
   return (
     <div className="bg-white rounded-2xl shadow-lg p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-gray-800">
-          تفسیر  ABG کودکان
+          تفسیر ABG کودکان
         </h2>
         <button
           onClick={resetABG}
@@ -709,22 +718,34 @@ const ABGInterpretation = ({
 
       <button
         onClick={interpretABG}
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold transition-colors mb-6 flex items-center justify-center gap-2"
+        disabled={isCalculating}
+        className={`w-full ${
+          isCalculating ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
+        } text-white py-3 rounded-lg font-bold transition-colors mb-6 flex items-center justify-center gap-2`}
       >
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-        تفسیر پیشرفته ABG و اعمال تنظیمات
+        {isCalculating ? (
+          <>
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+            در حال محاسبه...
+          </>
+        ) : (
+          <>
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            تفسیر پیشرفته ABG و اعمال تنظیمات
+          </>
+        )}
       </button>
 
       {/* نتایج تفسیر */}
@@ -745,40 +766,35 @@ const ABGInterpretation = ({
                   d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              تفسیر کامل ABG :
+              تفسیر کامل ABG:
             </h3>
             <div className="space-y-2 text-blue-700">
               <p className="font-semibold text-lg">
-                {" "}
                 {abgInterpretation.primary}
                 {abgInterpretation.secondary}
+                {abgInterpretation.chronicity && ` - ${abgInterpretation.chronicity}`}
               </p>
-              {abgInterpretation.chronicity && (
-                <p className="font-medium">
-                   <strong>سیر زمانی:</strong> {abgInterpretation.chronicity}
-                </p>
-              )}
               {abgInterpretation.compensation && (
                 <p className="font-medium">
-                   <strong>وضعیت جبرانی:</strong>{" "}
+                  <strong>وضعیت جبرانی:</strong>{" "}
                   {abgInterpretation.compensation}
                 </p>
               )}
               {abgInterpretation.oxygenation && (
                 <p className="font-medium">
-                   <strong>اکسیژناسیون:</strong>{" "}
+                  <strong>اکسیژناسیون:</strong>{" "}
                   {abgInterpretation.oxygenation}
                 </p>
               )}
               {abgInterpretation.clinicalImplications && (
                 <p className="font-medium">
-                   <strong>پیامدهای بالینی:</strong>{" "}
+                  <strong>پیامدهای بالینی:</strong>{" "}
                   {abgInterpretation.clinicalImplications}
                 </p>
               )}
               {abgInterpretation.management && (
                 <p className="font-medium">
-                   <strong>پیشنهادات مدیریتی:</strong>{" "}
+                  <strong>پیشنهادات:</strong>{" "}
                   {abgInterpretation.management}
                 </p>
               )}
@@ -812,65 +828,76 @@ const ABGInterpretation = ({
             </div>
           )}
 
-          {/* راهنمای تفسیر پیشرفته */}
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-            <h3 className="font-bold text-purple-800 mb-2 flex items-center gap-2">
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                />
-              </svg>
-              راهنمای تفسیر:
-            </h3>
-            <div className="text-purple-700 text-sm space-y-2 text-right">
-              <p className="mt-2">
-                <strong>فرمول‌های جبرانی :</strong>
-              </p>
-              <p>
-                • <strong>اسیدوز متابولیک:</strong>
-              </p>
-              <div dir="ltr" className="text-left bg-gray-100 p-2 rounded mt-1">
-                pCO₂ مورد انتظار = (1.5 × HCO₃) + 8 ± 2
+          {/* راهنمای تفسیر پیشرفته با قابلیت باز و بسته شدن */}
+          <div className="bg-purple-50 border border-purple-200 rounded-lg">
+            <button
+              onClick={() => setShowGuide(!showGuide)}
+              className="w-full p-4 text-right flex items-center justify-between hover:bg-purple-100 transition-colors"
+            >
+              <h3 className="font-bold text-purple-800 flex items-center gap-2">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                  />
+                </svg>
+                راهنمای تفسیر
+              </h3>
+              {showGuide ? <MdExpandLess size={20} /> : <MdExpandMore size={20} />}
+            </button>
+            
+            {showGuide && (
+              <div className="p-4 border-t border-purple-200">
+                <div className="text-purple-700 text-sm space-y-2 text-right">
+                  <p className="mt-2">
+                    <strong>فرمول‌های جبرانی:</strong>
+                  </p>
+                  <p>
+                    • <strong>اسیدوز متابولیک:</strong>
+                  </p>
+                  <div dir="ltr" className="text-left bg-gray-100 p-2 rounded mt-1">
+                    pCO₂ مورد انتظار = (1.5 × HCO₃) + 8 ± 2
+                  </div>
+                  <p>
+                    • <strong>آلکالوز متابولیک:</strong>
+                  </p>
+                  <div dir="ltr" className="text-left bg-gray-100 p-2 rounded mt-1">
+                    pCO₂ مورد انتظار = (0.7 × HCO₃) + 20 ± 3
+                  </div>
+                  <p>
+                    • <strong>اسیدوز تنفسی حاد:</strong>
+                  </p>
+                  <div dir="ltr" className="text-left bg-gray-100 p-2 rounded mt-1">
+                    HCO₃ افزایش 0.1 mEq/L به ازای هر mmHg pCO₂
+                  </div>
+                  <p>
+                    • <strong>اسیدوز تنفسی مزمن:</strong>
+                  </p>
+                  <div dir="ltr" className="text-left bg-gray-100 p-2 rounded mt-1">
+                    HCO₃ افزایش 0.3-0.4 mEq/L به ازای هر mmHg pCO₂
+                  </div>
+                  <p>
+                    • <strong>آلکالوز تنفسی حاد:</strong>
+                  </p>
+                  <div dir="ltr" className="text-left bg-gray-100 p-2 rounded mt-1">
+                    HCO₃ کاهش 0.2 mEq/L به ازای هر mmHg pCO₂
+                  </div>
+                  <p>
+                    • <strong>آلکالوز تنفسی مزمن:</strong>
+                  </p>
+                  <div dir="ltr" className="text-left bg-gray-100 p-2 rounded mt-1">
+                    HCO₃ کاهش 0.4 mEq/L به ازای هر mmHg pCO₂
+                  </div>
+                </div>
               </div>
-              <p>
-                • <strong>آلکالوز متابولیک:</strong>
-              </p>
-              <div dir="ltr" className="text-left bg-gray-100 p-2 rounded mt-1">
-                pCO₂ مورد انتظار = (0.7 × HCO₃) + 20 ± 3
-              </div>
-              <p>
-                • <strong>اسیدوز تنفسی حاد:</strong>
-              </p>
-              <div dir="ltr" className="text-left bg-gray-100 p-2 rounded mt-1">
-                HCO₃ افزایش 0.1 mEq/L به ازای هر mmHg pCO₂
-              </div>
-              <p>
-                • <strong>اسیدوز تنفسی مزمن:</strong>
-              </p>
-              <div dir="ltr" className="text-left bg-gray-100 p-2 rounded mt-1">
-                HCO₃ افزایش 0.3-0.4 mEq/L به ازای هر mmHg pCO₂
-              </div>
-              <p>
-                • <strong>آلکالوز تنفسی حاد:</strong>
-              </p>
-              <div dir="ltr" className="text-left bg-gray-100 p-2 rounded mt-1">
-                HCO₃ کاهش 0.2 mEq/L به ازای هر mmHg pCO₂
-              </div>
-              <p>
-                • <strong>آلکالوز تنفسی مزمن:</strong>
-              </p>
-              <div dir="ltr" className="text-left bg-gray-100 p-2 rounded mt-1">
-                HCO₃ کاهش 0.4 mEq/L به ازای هر mmHg pCO₂
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}

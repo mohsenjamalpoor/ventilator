@@ -70,7 +70,7 @@ const SettingsModal = ({
                 ویرایش تنظیمات - {currentMode?.name}
               </h2>
               <p className="text-teal-100 mt-1">
-                {isInfant ? "حالت نوزادان" : "حالت کودکان"} - وزن: {weight} kg
+                {isInfant ? " نوزادان" : " کودکان"} - وزن: {weight} kg
               </p>
             </div>
             <button

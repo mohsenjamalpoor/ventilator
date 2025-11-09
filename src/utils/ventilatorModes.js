@@ -18,10 +18,10 @@ export const pediatricVentilatorModes = {
         label: "میزان تنفس",
         unit: "/min",
         min: isInfant ? 20 : 15,
-        max: isInfant ? 40 : 35,
+        max: isInfant ? 40 : 80,
         step: 1,
         infantRange: "25-40/min",
-        pediatricRange: "15-35/min"
+        pediatricRange: "15-80/min"
       },
       { 
         key: "fio2", 
@@ -36,7 +36,7 @@ export const pediatricVentilatorModes = {
         label: "PEEP",
         unit: "cmH₂O",
         min: isInfant ? 3 : 4,
-        max: isInfant ? 8 : 10,
+        max: isInfant ? 8 : 15,
         step: 0.5,
         infantRange: "3-5 cmH₂O",
         pediatricRange: "4-8 cmH₂O"
