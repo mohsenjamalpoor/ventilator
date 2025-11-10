@@ -47,9 +47,8 @@ const ABGInterpretation = ({
   const [abgValues, setAbgValues] = useState({
     pH: "",
     pCO2: "",
-    pO2: "",
+    O2Saturation: "",
     HCO3: "",
-    BE: "",
   });
   const [abgInterpretation, setAbgInterpretation] = useState({
     primary: "",
@@ -85,7 +84,7 @@ const ABGInterpretation = ({
 
   // اعتبارسنجی مقادیر ABG برای کودکان
   const validateABG = () => {
-    const { pH, pCO2, pO2, HCO3, BE } = abgValues;
+    const { pH, pCO2, O2Saturation, HCO3 } = abgValues;
     const errors = {};
     let isValid = true;
 
@@ -115,16 +114,16 @@ const ABGInterpretation = ({
       }
     }
 
-    if (!pO2) {
-      errors.pO2 = "مقدار pO2 الزامی است";
+    if (!O2Saturation) {
+      errors.O2Saturation = "مقدار O2 Saturation الزامی است";
       isValid = false;
     } else {
-      const pO2Num = parseFloat(pO2);
-      if (pO2Num < 30 || pO2Num > 600) {
-        errors.pO2 = "مقدار pO2 باید بین 30 تا 600 mmHg باشد";
+      const O2SaturationNum = parseFloat(O2Saturation);
+      if (O2SaturationNum < 50 || O2SaturationNum > 100) {
+        errors.O2Saturation = "مقدار O2 Saturation باید بین 50 تا 100 باشد";
         isValid = false;
-      } else if (pO2Num < 80) {
-        errors.pO2 = "مقدار pO2 پایین است (هیپوکسمی)";
+      } else if (O2SaturationNum < 94) {
+        errors.O2Saturation = "مقدار O2 Saturation پایین است (هیپوکسمی)";
       }
     }
 
@@ -138,14 +137,6 @@ const ABGInterpretation = ({
         isValid = false;
       } else if (HCO3Num < 22 || HCO3Num > 26) {
         errors.HCO3 = "مقدار HCO3 خارج از محدوده نرمال است";
-      }
-    }
-
-    // اعتبارسنجی اختیاری برای Base Excess
-    if (BE) {
-      const BENum = parseFloat(BE);
-      if (BENum < -30 || BENum > 30) {
-        errors.BE = "مقدار BE باید بین -30 تا +30 باشد";
       }
     }
 
@@ -208,16 +199,6 @@ const ABGInterpretation = ({
     return { status: "نامشخص", expectedHCO3: 24 };
   };
 
-  // تفسیر Base Excess بر اساس نلسون
-  const interpretBaseExcess = (BE) => {
-    if (!BE) return "";
-
-    const BENum = parseFloat(BE);
-    if (BENum < -5) return "اسیدوز متابولیک (BE منفی)";
-    if (BENum > +5) return "آلکالوز متابولیک (BE مثبت)";
-    return "BE نرمال";
-  };
-
   // تفسیر دقیق ABG برای کودکان بر اساس رفرنس‌های نلسون و اپ‌تودیت
   const interpretABG = async () => {
     setIsCalculating(true);
@@ -232,10 +213,10 @@ const ABGInterpretation = ({
         onSettingsBeforeUpdate(currentSettings);
       }
 
-      const { pH, pCO2, pO2, HCO3, BE } = abgValues;
+      const { pH, pCO2, O2Saturation, HCO3 } = abgValues;
       const pHNum = parseFloat(pH);
       const pCO2Num = parseFloat(pCO2);
-      const pO2Num = parseFloat(pO2);
+      const O2SaturationNum = parseFloat(O2Saturation);
       const HCO3Num = parseFloat(HCO3);
 
       let interpretation = {
@@ -397,34 +378,26 @@ const ABGInterpretation = ({
         }
       }
 
-      // تفسیر Base Excess
-      if (BE) {
-        const BEInterpretation = interpretBaseExcess(BE);
-        if (BEInterpretation && !interpretation.secondary) {
-          interpretation.secondary = ` (${BEInterpretation})`;
-        }
-      }
-
-      // ارزیابی اکسیژناسیون بر اساس نلسون (بدون نمایش PaO₂/FiO₂)
+      // ارزیابی اکسیژناسیون بر اساس O2 Saturation
       const currentFiO2 = parseInt(currentSettings.fio2) || 21;
 
-      if (pO2Num < 60) {
-        interpretation.oxygenation = "هیپوکسمی شدید (احتمال ARDS)";
+      if (O2SaturationNum < 90) {
+        interpretation.oxygenation = "هیپوکسمی شدید (O₂ Sat < 90%)";
         interpretation.management +=
           " - پشتیبانی تهویه تهاجمی - مانیتورینگ دقیق اکسیژناسیون";
         newSettings.fio2 = Math.min(100, currentFiO2 + 30);
         newSettings.peep = Math.min(12, parseInt(currentSettings.peep || 5) + 3);
-      } else if (pO2Num < 80) {
-        interpretation.oxygenation = "هیپوکسمی متوسط";
+      } else if (O2SaturationNum < 94) {
+        interpretation.oxygenation = "هیپوکسمی متوسط (O₂ Sat 90-94%)";
         newSettings.fio2 = Math.min(80, currentFiO2 + 20);
         newSettings.peep = Math.min(10, parseInt(currentSettings.peep || 5) + 2);
-      } else if (pO2Num >= 80 && pO2Num < 100) {
-        interpretation.oxygenation = "اکسیژناسیون قابل قبول";
+      } else if (O2SaturationNum >= 94 && O2SaturationNum < 97) {
+        interpretation.oxygenation = "اکسیژناسیون قابل قبول (O₂ Sat 94-97%)";
         if (currentFiO2 > 40) {
           newSettings.fio2 = Math.max(30, currentFiO2 - 10);
         }
       } else {
-        interpretation.oxygenation = "اکسیژناسیون خوب";
+        interpretation.oxygenation = "اکسیژناسیون خوب (O₂ Sat ≥ 97%)";
         if (currentFiO2 > 30) {
           newSettings.fio2 = Math.max(21, currentFiO2 - 15);
         }
@@ -534,9 +507,8 @@ const ABGInterpretation = ({
     setAbgValues({
       pH: "",
       pCO2: "",
-      pO2: "",
+      O2Saturation: "",
       HCO3: "",
-      BE: "",
     });
     setAbgInterpretation({
       primary: "",
@@ -568,7 +540,7 @@ const ABGInterpretation = ({
       </div>
 
       {/* فرم ورود ABG */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 gap-4 mb-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             pH
@@ -629,30 +601,30 @@ const ABGInterpretation = ({
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            pO₂ (mmHg)
+            O₂ Saturation (%)
           </label>
           <input
             type="number"
             step="0.1"
-            value={abgValues.pO2}
-            onChange={(e) => handleAbgChange("pO2", e.target.value)}
+            value={abgValues.O2Saturation}
+            onChange={(e) => handleAbgChange("O2Saturation", e.target.value)}
             className={`w-full px-3 py-2 border rounded-lg text-right direction-ltr ${
-              abgErrors.pO2 ? "border-red-500 bg-red-50" : "border-gray-300"
+              abgErrors.O2Saturation ? "border-red-500 bg-red-50" : "border-gray-300"
             }`}
-            placeholder="80"
+            placeholder="98"
             dir="ltr"
           />
-          {abgErrors.pO2 && (
+          {abgErrors.O2Saturation && (
             <p className="text-red-500 text-xs mt-1 text-right">
-              {abgErrors.pO2}
+              {abgErrors.O2Saturation}
             </p>
           )}
           {showValidation && (
             <NormalRangeIndicator
-              value={abgValues.pO2}
-              normalMin={80}
+              value={abgValues.O2Saturation}
+              normalMin={94}
               normalMax={100}
-              unit="mmHg"
+              unit="%"
             />
           )}
         </div>
@@ -681,35 +653,6 @@ const ABGInterpretation = ({
               value={abgValues.HCO3}
               normalMin={22}
               normalMax={26}
-              unit="mEq/L"
-            />
-          )}
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Base Excess (mEq/L)
-          </label>
-          <input
-            type="number"
-            step="0.1"
-            value={abgValues.BE}
-            onChange={(e) => handleAbgChange("BE", e.target.value)}
-            className={`w-full px-3 py-2 border rounded-lg text-right direction-ltr ${
-              abgErrors.BE ? "border-red-500 bg-red-50" : "border-gray-300"
-            }`}
-            placeholder="0"
-            dir="ltr"
-          />
-          {abgErrors.BE && (
-            <p className="text-red-500 text-xs mt-1 text-right">
-              {abgErrors.BE}
-            </p>
-          )}
-          {showValidation && abgValues.BE && (
-            <NormalRangeIndicator
-              value={abgValues.BE}
-              normalMin={-2}
-              normalMax={2}
               unit="mEq/L"
             />
           )}
