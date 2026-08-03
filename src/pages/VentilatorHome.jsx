@@ -1,95 +1,99 @@
-import React, { useState } from 'react'
-import InfantVentilator from '../components/InfantVentilator'
-import PediatricVentilator from '../components/PediatricVentilator'
+import React, { useState } from "react";
+import InfantVentilator from "../components/InfantVentilator";
+import PediatricVentilator from "../components/PediatricVentilator";
 
 export default function VentilatorHome() {
-  const [weight, setWeight] = useState('')
-  const [age, setAge] = useState('')
-  const [ageUnit, setAgeUnit] = useState('months')
-  const [lungInvolvement, setLungInvolvement] = useState('') // نوع درگیری ریوی
-  const [normalLungCondition, setNormalLungCondition] = useState('') // شرایط ریه نرمال
-  const [obstructiveDisease, setObstructiveDisease] = useState('') // بیماری انسدادی
-  const [restrictiveDisease, setRestrictiveDisease] = useState('') // بیماری رستریکتیو
-  const [ventilatorType, setVentilatorType] = useState(null)
-  const [errors, setErrors] = useState({})
+  const [weight, setWeight] = useState("");
+  const [age, setAge] = useState("");
+  const [ageUnit, setAgeUnit] = useState("months");
+  const [lungInvolvement, setLungInvolvement] = useState(""); // نوع درگیری ریوی
+  const [normalLungCondition, setNormalLungCondition] = useState(""); // شرایط ریه نرمال
+  const [obstructiveDisease, setObstructiveDisease] = useState(""); // بیماری انسدادی
+  const [restrictiveDisease, setRestrictiveDisease] = useState(""); // بیماری رستریکتیو
+  const [ventilatorType, setVentilatorType] = useState(null);
+  const [errors, setErrors] = useState({});
 
   const validateForm = () => {
-    const newErrors = {}
-    
+    const newErrors = {};
+
     if (!weight || weight <= 0) {
-      newErrors.weight = 'وزن باید بزرگتر از صفر باشد'
+      newErrors.weight = "وزن باید بزرگتر از صفر باشد";
     }
-    
+
     if (!age || age <= 0) {
-      newErrors.age = 'سن باید بزرگتر از صفر باشد'
+      newErrors.age = "سن باید بزرگتر از صفر باشد";
     }
-    
+
     if (!lungInvolvement) {
-      newErrors.lungInvolvement = 'لطفا نوع درگیری ریوی را انتخاب کنید'
+      newErrors.lungInvolvement = "لطفا نوع درگیری ریوی را انتخاب کنید";
     }
 
     // اگر ریه نرمال انتخاب شده، شرایط مربوطه باید انتخاب شود
-    if (lungInvolvement === 'normal' && !normalLungCondition) {
-      newErrors.normalLungCondition = 'لطفا شرایط بیمار را انتخاب کنید'
+    if (lungInvolvement === "normal" && !normalLungCondition) {
+      newErrors.normalLungCondition = "لطفا شرایط بیمار را انتخاب کنید";
     }
 
     // اگر انسدادی انتخاب شده، بیماری انسدادی باید انتخاب شود
-    if (lungInvolvement === 'obstructive' && !obstructiveDisease) {
-      newErrors.obstructiveDisease = 'لطفا بیماری انسدادی را انتخاب کنید'
+    if (lungInvolvement === "obstructive" && !obstructiveDisease) {
+      newErrors.obstructiveDisease = "لطفا بیماری انسدادی را انتخاب کنید";
     }
 
     // اگر رستریکتیو انتخاب شده، بیماری رستریکتیو باید انتخاب شود
-    if (lungInvolvement === 'restrictive' && !restrictiveDisease) {
-      newErrors.restrictiveDisease = 'لطفا بیماری رستریکتیو را انتخاب کنید'
+    if (lungInvolvement === "restrictive" && !restrictiveDisease) {
+      newErrors.restrictiveDisease = "لطفا بیماری رستریکتیو را انتخاب کنید";
     }
-    
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleVentilatorSelect = (type) => {
     if (validateForm()) {
-      setVentilatorType(type)
+      setVentilatorType(type);
     }
-  }
+  };
 
   const handleReset = () => {
-    setWeight('')
-    setAge('')
-    setAgeUnit('months')
-    setLungInvolvement('')
-    setNormalLungCondition('')
-    setObstructiveDisease('')
-    setRestrictiveDisease('')
-    setVentilatorType(null)
-    setErrors({})
-  }
+    setWeight("");
+    setAge("");
+    setAgeUnit("months");
+    setLungInvolvement("");
+    setNormalLungCondition("");
+    setObstructiveDisease("");
+    setRestrictiveDisease("");
+    setVentilatorType(null);
+    setErrors({});
+  };
 
   // اگر نوع ونتیلاتور انتخاب شد، صفحه مربوطه را نمایش بده
-  if (ventilatorType === 'pressure-controlled') {
-    return <InfantVentilator 
-      weight={weight} 
-      age={age} 
-      ageUnit={ageUnit} 
-      lungInvolvement={lungInvolvement}
-      normalLungCondition={normalLungCondition}
-      obstructiveDisease={obstructiveDisease}
-      restrictiveDisease={restrictiveDisease}
-      onBack={handleReset} 
-    />
+  if (ventilatorType === "pressure-controlled") {
+    return (
+      <InfantVentilator
+        weight={weight}
+        age={age}
+        ageUnit={ageUnit}
+        lungInvolvement={lungInvolvement}
+        normalLungCondition={normalLungCondition}
+        obstructiveDisease={obstructiveDisease}
+        restrictiveDisease={restrictiveDisease}
+        onBack={handleReset}
+      />
+    );
   }
-  
-  if (ventilatorType === 'volume-controlled') {
-    return <PediatricVentilator 
-      weight={weight} 
-      age={age} 
-      ageUnit={ageUnit} 
-      lungInvolvement={lungInvolvement}
-      normalLungCondition={normalLungCondition}
-      obstructiveDisease={obstructiveDisease}
-      restrictiveDisease={restrictiveDisease}
-      onBack={handleReset} 
-    />
+
+  if (ventilatorType === "volume-controlled") {
+    return (
+      <PediatricVentilator
+        weight={weight}
+        age={age}
+        ageUnit={ageUnit}
+        lungInvolvement={lungInvolvement}
+        normalLungCondition={normalLungCondition}
+        obstructiveDisease={obstructiveDisease}
+        restrictiveDisease={restrictiveDisease}
+        onBack={handleReset}
+      />
+    );
   }
 
   // صفحه اصلی ورود اطلاعات
@@ -106,7 +110,10 @@ export default function VentilatorHome() {
         <div className="p-6">
           {/* فیلد وزن */}
           <div className="mb-6">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="weight">
+            <label
+              className="block text-gray-700 text-sm font-bold mb-2"
+              htmlFor="weight"
+            >
               وزن بیمار (کیلوگرم)
             </label>
             <input
@@ -116,9 +123,9 @@ export default function VentilatorHome() {
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
               className={`w-full px-4 py-3 border rounded-lg text-left focus:outline-none focus:ring-2 ${
-                errors.weight 
-                  ? 'border-red-500 focus:ring-red-200' 
-                  : 'border-gray-300 focus:ring-blue-200'
+                errors.weight
+                  ? "border-red-500 focus:ring-red-200"
+                  : "border-gray-300 focus:ring-blue-200"
               }`}
               placeholder="مثال: 3.5"
             />
@@ -139,9 +146,9 @@ export default function VentilatorHome() {
                 value={age}
                 onChange={(e) => setAge(e.target.value)}
                 className={`flex-1 px-4 py-3 border rounded-lg text-left focus:outline-none focus:ring-2 ${
-                  errors.age 
-                    ? 'border-red-500 focus:ring-red-200' 
-                    : 'border-gray-300 focus:ring-blue-200'
+                  errors.age
+                    ? "border-red-500 focus:ring-red-200"
+                    : "border-gray-300 focus:ring-blue-200"
                 }`}
                 placeholder="مثال: 1.5"
               />
@@ -162,22 +169,25 @@ export default function VentilatorHome() {
 
           {/* فیلد نوع درگیری ریوی */}
           <div className="mb-6">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="lungInvolvement">
+            <label
+              className="block text-gray-700 text-sm font-bold mb-2"
+              htmlFor="lungInvolvement"
+            >
               نوع درگیری ریوی
             </label>
             <select
               id="lungInvolvement"
               value={lungInvolvement}
               onChange={(e) => {
-                setLungInvolvement(e.target.value)
-                setNormalLungCondition('') 
-                setObstructiveDisease('') 
-                setRestrictiveDisease('') 
+                setLungInvolvement(e.target.value);
+                setNormalLungCondition("");
+                setObstructiveDisease("");
+                setRestrictiveDisease("");
               }}
               className={`w-full px-4 py-3 border rounded-lg text-right focus:outline-none focus:ring-2 ${
-                errors.lungInvolvement 
-                  ? 'border-red-500 focus:ring-red-200' 
-                  : 'border-gray-300 focus:ring-blue-200'
+                errors.lungInvolvement
+                  ? "border-red-500 focus:ring-red-200"
+                  : "border-gray-300 focus:ring-blue-200"
               }`}
             >
               <option value="">لطفا نوع درگیری ریوی را انتخاب کنید</option>
@@ -188,13 +198,18 @@ export default function VentilatorHome() {
               {/* <option value="none">بدون درگیری ریوی</option> */}
             </select>
             {errors.lungInvolvement && (
-              <p className="text-red-500 text-xs mt-1">{errors.lungInvolvement}</p>
+              <p className="text-red-500 text-xs mt-1">
+                {errors.lungInvolvement}
+              </p>
             )}
 
             {/* فیلد شرایط ریه نرمال  */}
-            {lungInvolvement === 'normal' && (
+            {lungInvolvement === "normal" && (
               <div className="mt-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="normalLungCondition">
+                <label
+                  className="block text-gray-700 text-sm font-bold mb-2"
+                  htmlFor="normalLungCondition"
+                >
                   شرایط بیمار با ریه نرمال
                 </label>
                 <select
@@ -202,25 +217,32 @@ export default function VentilatorHome() {
                   value={normalLungCondition}
                   onChange={(e) => setNormalLungCondition(e.target.value)}
                   className={`w-full px-4 py-3 border rounded-lg text-right focus:outline-none focus:ring-2 ${
-                    errors.normalLungCondition 
-                      ? 'border-red-500 focus:ring-red-200' 
-                      : 'border-gray-300 focus:ring-blue-200'
+                    errors.normalLungCondition
+                      ? "border-red-500 focus:ring-red-200"
+                      : "border-gray-300 focus:ring-blue-200"
                   }`}
                 >
                   <option value="">لطفا شرایط بیمار را انتخاب کنید</option>
-                  <option value="reduced_consciousness">کاهش سطح هوشیاری</option>
+                  <option value="reduced_consciousness">
+                    کاهش سطح هوشیاری
+                  </option>
                   <option value="seizure">تشنج</option>
                 </select>
                 {errors.normalLungCondition && (
-                  <p className="text-red-500 text-xs mt-1">{errors.normalLungCondition}</p>
+                  <p className="text-red-500 text-xs mt-1">
+                    {errors.normalLungCondition}
+                  </p>
                 )}
               </div>
             )}
 
             {/* فیلد بیماری انسدادی   */}
-            {lungInvolvement === 'obstructive' && (
+            {lungInvolvement === "obstructive" && (
               <div className="mt-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="obstructiveDisease">
+                <label
+                  className="block text-gray-700 text-sm font-bold mb-2"
+                  htmlFor="obstructiveDisease"
+                >
                   بیماری انسدادی
                 </label>
                 <select
@@ -228,9 +250,9 @@ export default function VentilatorHome() {
                   value={obstructiveDisease}
                   onChange={(e) => setObstructiveDisease(e.target.value)}
                   className={`w-full px-4 py-3 border rounded-lg text-right focus:outline-none focus:ring-2 ${
-                    errors.obstructiveDisease 
-                      ? 'border-red-500 focus:ring-red-200' 
-                      : 'border-gray-300 focus:ring-blue-200'
+                    errors.obstructiveDisease
+                      ? "border-red-500 focus:ring-red-200"
+                      : "border-gray-300 focus:ring-blue-200"
                   }`}
                 >
                   <option value="">لطفا بیماری انسدادی را انتخاب کنید</option>
@@ -239,18 +261,25 @@ export default function VentilatorHome() {
                   <option value="copd">بیماری انسدادی مزمن ریوی (COPD)</option>
                   <option value="bronchiectasis">برونشکتازی</option>
                   <option value="cystic_fibrosis">فیبروز سیستیک</option>
-                  <option value="foreign_body_aspiration">آسپیراسیون جسم خارجی</option>
+                  <option value="foreign_body_aspiration">
+                    آسپیراسیون جسم خارجی
+                  </option>
                 </select>
                 {errors.obstructiveDisease && (
-                  <p className="text-red-500 text-xs mt-1">{errors.obstructiveDisease}</p>
+                  <p className="text-red-500 text-xs mt-1">
+                    {errors.obstructiveDisease}
+                  </p>
                 )}
               </div>
             )}
 
             {/* فیلد بیماری Restrictive*/}
-            {lungInvolvement === 'restrictive' && (
+            {lungInvolvement === "restrictive" && (
               <div className="mt-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="restrictiveDisease">
+                <label
+                  className="block text-gray-700 text-sm font-bold mb-2"
+                  htmlFor="restrictiveDisease"
+                >
                   بیماری Restrictive
                 </label>
                 <select
@@ -258,12 +287,14 @@ export default function VentilatorHome() {
                   value={restrictiveDisease}
                   onChange={(e) => setRestrictiveDisease(e.target.value)}
                   className={`w-full px-4 py-3 border rounded-lg text-right focus:outline-none focus:ring-2 ${
-                    errors.restrictiveDisease 
-                      ? 'border-red-500 focus:ring-red-200' 
-                      : 'border-gray-300 focus:ring-blue-200'
+                    errors.restrictiveDisease
+                      ? "border-red-500 focus:ring-red-200"
+                      : "border-gray-300 focus:ring-blue-200"
                   }`}
                 >
-                  <option value="">لطفا بیماری Restrictive را انتخاب کنید</option>
+                  <option value="">
+                    لطفا بیماری Restrictive را انتخاب کنید
+                  </option>
                   <option value="pneumonia">پنومونی</option>
                   <option value="ards">سندرم زجر تنفسی حاد (ARDS)</option>
                   <option value="pulmonary_edema">ادم ریوی</option>
@@ -273,7 +304,9 @@ export default function VentilatorHome() {
                   <option value="atelectasis">آتلکتازی</option>
                 </select>
                 {errors.restrictiveDisease && (
-                  <p className="text-red-500 text-xs mt-1">{errors.restrictiveDisease}</p>
+                  <p className="text-red-500 text-xs mt-1">
+                    {errors.restrictiveDisease}
+                  </p>
                 )}
               </div>
             )}
@@ -287,14 +320,14 @@ export default function VentilatorHome() {
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => handleVentilatorSelect('pressure-controlled')}
+                onClick={() => handleVentilatorSelect("pressure-controlled")}
                 className="bg-pink-400 hover:bg-pink-600 text-white py-4 px-4 rounded-lg font-bold transition-colors text-center"
               >
                 نوزادان
               </button>
               <button
                 type="button"
-                onClick={() => handleVentilatorSelect('volume-controlled')}
+                onClick={() => handleVentilatorSelect("volume-controlled")}
                 className="bg-blue-400 hover:bg-blue-600 text-white py-4 px-4 rounded-lg font-bold transition-colors text-center"
               >
                 کودکان
@@ -315,5 +348,5 @@ export default function VentilatorHome() {
         </div>
       </div>
     </div>
-  )
+  );
 }
